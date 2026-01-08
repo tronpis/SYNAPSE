@@ -87,7 +87,7 @@ void gdt_init(void) {
         "movw %%ax, %%fs\n"
         "movw %%ax, %%gs\n"
         "movw %%ax, %%ss\n"
-        "pushl %2\n"                    /* Push CS selector */
+        "pushw %2\n"                    /* Push CS selector (16-bit) */
         "pushl $1f\n"                   /* Push return address */
         "lretl\n"                       /* Far return to reload CS */
         "1:\n"
