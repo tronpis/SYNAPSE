@@ -1,0 +1,41 @@
+# SYNAPSE SO - Git Ignore File
+# Licensed under GPLv3
+
+# Build directories
+build/
+isodir/
+
+# Build artifacts
+*.o
+*.elf
+*.iso
+*.bin
+*.img
+
+# Editor files
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backup files
+*.bak
+*.backup
+
+# Debug files
+*.log
+*.debug
+
+# Kernel symbols
+*.sym
+.map
+
+# Generated documentation
+docs/*.png
+docs/diagrams/

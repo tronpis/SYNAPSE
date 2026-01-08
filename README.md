@@ -9,7 +9,81 @@ Objetivos del Proyecto:
 - Documentar todo el sistema con diagramas y gráficos claros para facilitar contribuciones.
 
 Estado Actual:
-El proyecto se encuentra en una fase inicial. Actualmente el repositorio contiene documentación base y lineamientos generales. La estructura prevista del proyecto incluye kernel, drivers, userland y documentación técnica. Se aceptan contribuciones desde el inicio para definir arquitectura y roadmap.
+**Fase 1 COMPLETADA** - Boot mínimo y kernel inicial implementados.
+El kernel actual incluye:
+- Bootloader compatible con Multiboot (GRUB)
+- Implementación inicial del kernel en C y Assembly
+- Driver VGA para modo texto
+- GDT (Global Descriptor Table) configurado
+- IDT (Interrupt Descriptor Table) con handlers básicos
+- Sistema de construcción con Makefile
+- Imagen ISO bootable
+
+El repositorio contiene documentación completa, código fuente del kernel, y herramientas para construir y ejecutar el sistema operativo.
+
+## Construcción y Ejecución
+
+### Requisitos Previos
+- GCC con soporte de 32 bits
+- NASM (assembler)
+- GNU LD (linker)
+- GRUB mkrescue (para crear ISO)
+- QEMU (para probar, opcional)
+
+### Instrucciones de Construcción
+
+```bash
+# Clonar el repositorio
+git clone <repository-url>
+cd synapse-so
+
+# Construir el kernel
+make
+
+# Ejecutar en QEMU
+make run
+
+# Ejecutar con modo debug
+make debug
+
+# Limpiar archivos de construcción
+make clean
+```
+
+El comando `make` generará:
+- `build/kernel.elf` - El kernel compilado
+- `synapse.iso` - Imagen ISO bootable
+
+### Pruebas
+
+El kernel puede probarse de varias maneras:
+1. **Virtualización**: Usar QEMU con `make run`
+2. **Hardware Real**: Grabar la ISO en un USB o CD y bootear
+3. **Depuración**: Usar `make debug` para ver información detallada
+
+### Estructura del Proyecto
+
+```
+synapse-so/
+├── boot/              # Código de arranque
+│   ├── boot.asm      # Punto de entrada del bootloader
+│   └── linker.ld     # Script del linker del kernel
+├── kernel/           # Código del kernel
+│   ├── include/      # Headers del kernel
+│   ├── arch/x86_64/  # Código específico de arquitectura
+│   ├── lib/          # Librerías del kernel
+│   ├── kernel.c      # Entrada principal del kernel
+│   ├── vga.c         # Driver de pantalla
+│   ├── gdt.c         # Tabla de descriptores global
+│   ├── idt.c         # Tabla de descriptores de interrupciones
+│   └── isr.asm       # Rutinas de servicio de interrupciones
+├── docs/             # Documentación técnica
+├── Makefile          # Sistema de construcción
+├── README.md         # Este archivo
+└── LICENSE           # Licencia GPLv3
+```
+
+Para más detalles técnicos, consultar `docs/ARCHITECTURE.md`.
 
 Contribuciones:
 Cualquier persona puede contribuir mediante pull requests. Se recomienda abrir primero un issue explicando la propuesta. Todas las contribuciones serán revisadas mediante herramientas automáticas de análisis y auditoría, y la decisión final de integración corresponde al mantenedor del proyecto.
@@ -27,12 +101,12 @@ Seguridad y Auditoría:
 El proyecto prioriza la seguridad. Se utilizan herramientas automáticas para detectar vulnerabilidades, malas prácticas y posibles fallos futuros. Ningún cambio crítico se integra sin revisión. El objetivo es minimizar riesgos y facilitar auditorías públicas constantes.
 
 Roadmap Inicial:
-Fase 0: Documentación base, licencia y estructura del repositorio.
-Fase 1: Boot mínimo y kernel inicial.
-Fase 2: Gestión de memoria, scheduler básico y soporte ELF.
-Fase 3: Userland compatible con estándares POSIX.
-Fase 4: Optimización para videojuegos y gráficos modernos.
-Fase 5: Hardening de seguridad, perfiles para servidor y desktop.
+- ✅ Fase 0: Documentación base, licencia y estructura del repositorio.
+- ✅ Fase 1: Boot mínimo y kernel inicial.
+- 🔄 Fase 2: Gestión de memoria, scheduler básico y soporte ELF.
+- ⬜ Fase 3: Userland compatible con estándares POSIX.
+- ⬜ Fase 4: Optimización para videojuegos y gráficos modernos.
+- ⬜ Fase 5: Hardening de seguridad, perfiles para servidor y desktop.
 
 Licencia:
 Este proyecto está licenciado bajo la GNU General Public License v3.0 (GPLv3). El uso, modificación y redistribución están permitidos bajo los términos de dicha licencia.
