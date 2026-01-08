@@ -54,7 +54,10 @@ int elf_check_header(elf32_header_t* header) {
 /* Load ELF binary */
 int elf_load(uint8_t* elf_data, uint32_t size, uint32_t* entry_point) {
     (void)size; /* Unused parameter */
-    elf32_header_t* header = (elf32_header_t*)elf_data;
+    if (size < sizeof(elf32_header_t)) {
+        vga_print("[-] ELF data too small for header\n");
+        return -1;
+    }
 
     vga_print("[+] Loading ELF binary...\n");
 
