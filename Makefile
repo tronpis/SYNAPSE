@@ -70,18 +70,8 @@ KERNEL_C_FILES = $(KERNEL_DIR)/kernel.c \
 
 # Library C source files
 KERNEL_LIB_FILES = $(KERNEL_DIR)/lib/string.c
-
-# ============================================================================
-# OBJECT FILES
-# ============================================================================
-# Explicit object file naming to avoid pattern conflicts
-BOOT_OBJ = $(BUILD_DIR)/boot.o
-KERNEL_ASM_OBJ = $(BUILD_DIR)/isr.o
-KERNEL_C_OBJS = $(BUILD_DIR)/kernel.o \
-                 $(BUILD_DIR)/vga.o \
-                 $(BUILD_DIR)/gdt.o \
-                 $(BUILD_DIR)/idt.o
-KERNEL_LIB_OBJS = $(BUILD_DIR)/string.o
+KERNEL_C_OBJS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/%.o,$(KERNEL_C_FILES))
+KERNEL_LIB_OBJS := $(patsubst $(KERNEL_DIR)/lib/%.c,$(BUILD_DIR)/%.o,$(KERNEL_LIB_FILES))
 
 # ============================================================================
 # OUTPUT FILES
