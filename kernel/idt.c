@@ -74,7 +74,6 @@ static void idt_set_gate(unsigned char num, unsigned int base,
 void isr_handler(void) {
     /* Placeholder for ISR handling
      * In a full implementation, this would:
-
      */
 }
 
