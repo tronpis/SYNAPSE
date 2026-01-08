@@ -11,8 +11,8 @@ SECTIONS
     /* Multiboot header and boot code */
     .text : ALIGN(4K)
     {
-        *(.multiboot)
-        *(.text)
+        KEEP(*(.multiboot))
+        *(.text*)
     }
 
     /* Read-only data */
