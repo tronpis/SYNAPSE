@@ -3,6 +3,9 @@
 
 section .text
 
+; Segment selector constants (must match kernel/include/kernel/gdt.h)
+%define KERNEL_CS 0x08
+
 ; Macro for ISR without error code
 ; These push a dummy error code to keep stack uniform
 %macro ISR_NOERRCODE 1
@@ -59,24 +62,7 @@ ISR_NOERRCODE 29  ; Reserved
 ISR_NOERRCODE 30  ; Reserved
 ISR_NOERRCODE 31  ; Reserved
 
-; Default ISR for unhandled interrupts
-global isr_default
-isr_default:
-    cli
-    push byte 0      ; dummy error code
-    push dword 255   ; reserved ISR number for unassigned
-    jmp isr_common_stub
 
-; Common ISR handler - called by all ISRs
-; Stack layout on entry:
-;   [esp+20] Error code (or dummy 0)
-;   [esp+16] ISR number
-;   [esp+12] EIP
-;   [esp+8]  CS
-;   [esp+4]  EFLAGS
-;   [esp]    Error code (for exceptions that push it)
-; Note: CPU state is NOT yet saved
-global isr_common_stub
 extern isr_handler
 
 isr_common_stub:
@@ -89,10 +75,9 @@ isr_common_stub:
     push fs
     push gs
 
-    ; Load kernel data segment (0x10 = index 2 << 3)
-    mov ax, 0x10
+
     mov ds, ax
-    mov es, ax
+    mov ax, KERNEL_DS
     mov fs, ax
     mov gs, ax
 
@@ -100,6 +85,7 @@ isr_common_stub:
     push esp                 ; Push pointer to registers_t struct
     call isr_handler
     add esp, 4               ; Clean up argument from stack
+
 
     ; Restore segment registers
     pop gs

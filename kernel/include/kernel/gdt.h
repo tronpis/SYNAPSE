@@ -4,6 +4,7 @@
 #ifndef KERNEL_GDT_H
 #define KERNEL_GDT_H
 
+
 /* GDT initialization function */
 void gdt_init(void);
 

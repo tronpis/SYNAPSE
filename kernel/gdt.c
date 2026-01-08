@@ -3,6 +3,10 @@
 
 #include <kernel/gdt.h>
 
+/* Macro to stringify for inline assembly (GDT-specific) */
+#define GDT_STR_HELPER(x) #x
+#define GDT_STR(x) GDT_STR_HELPER(x)
+
 /* GDT entry structure */
 typedef struct {
     unsigned short limit_low;
@@ -77,20 +81,5 @@ void gdt_init(void) {
     /* User Data Segment */
     gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
-    /* Load GDT and reload segment registers */
-    __asm__ __volatile__(
-        "lgdt %0\n"                      /* Load GDT */
-        "movw %1, %%ax\n"               /* Load kernel data segment */
-        "movw %%ax, %%ds\n"
-        "movw %%ax, %%es\n"
-        "movw %%ax, %%fs\n"
-        "movw %%ax, %%gs\n"
-        "movw %%ax, %%ss\n"
-        "pushl %2\n"                    /* Push CS selector */
-        "pushl $1f\n"                   /* Push return address */
-        "lretl\n"                       /* Far return to reload CS */
-        "1:\n"
-        : : "m"(gdt_ptr), "i"(KERNEL_DS), "i"(KERNEL_CS)
-        : "ax", "memory"
-    );
+
 }

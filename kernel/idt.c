@@ -56,6 +56,7 @@ extern void isr28(void); /* Reserved */
 extern void isr29(void); /* Reserved */
 extern void isr30(void); /* Reserved */
 extern void isr31(void); /* Reserved */
+extern void isr_default(void); /* Default handler for unhandled interrupts */
 
 /* Default interrupt handler stub (assembly) */
 extern void isr_default(void);
@@ -72,19 +73,7 @@ static void idt_set_gate(unsigned char num, unsigned int base,
 }
 
 /* ISR handler called from assembly stub */
-void isr_handler(registers_t *regs) {
-    /* Identify which interrupt occurred */
-    if (regs->int_no < 32) {
-        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
-        vga_print("\n[EXCEPTION] ");
-        vga_print_dec(regs->int_no);
-        vga_print(" - Error Code: ");
-        vga_print_hex(regs->err_code);
-        vga_print("\nKernel Halted.\n");
-        while (1) {
-            __asm__ __volatile__("hlt");
-        }
-    }
+
 }
 
 /* Initialize IDT */
@@ -93,47 +82,8 @@ void idt_init(void) {
     idt_ptr.limit = sizeof(idt_entry_t) * 256 - 1;
     idt_ptr.base = (unsigned int)&idt;
 
-    /* Clear IDT - set all entries to default stub */
-    for (int i = 0; i < 256; i++) {
-        idt_set_gate(i, (unsigned int)isr_default, 0x08, 0x8E);
-    }
 
-    /* Set up exception handlers with specific ISRs
-     * Note: All entries point to assembly stubs which safely
-     * preserve CPU state and call the C handler
-     */
-    idt_set_gate(0, (unsigned int)isr0, 0x08, 0x8E);
-    idt_set_gate(1, (unsigned int)isr1, 0x08, 0x8E);
-    idt_set_gate(2, (unsigned int)isr2, 0x08, 0x8E);
-    idt_set_gate(3, (unsigned int)isr3, 0x08, 0x8E);
-    idt_set_gate(4, (unsigned int)isr4, 0x08, 0x8E);
-    idt_set_gate(5, (unsigned int)isr5, 0x08, 0x8E);
-    idt_set_gate(6, (unsigned int)isr6, 0x08, 0x8E);
-    idt_set_gate(7, (unsigned int)isr7, 0x08, 0x8E);
-    idt_set_gate(8, (unsigned int)isr8, 0x08, 0x8E);
-    idt_set_gate(9, (unsigned int)isr9, 0x08, 0x8E);
-    idt_set_gate(10, (unsigned int)isr10, 0x08, 0x8E);
-    idt_set_gate(11, (unsigned int)isr11, 0x08, 0x8E);
-    idt_set_gate(12, (unsigned int)isr12, 0x08, 0x8E);
-    idt_set_gate(13, (unsigned int)isr13, 0x08, 0x8E);
-    idt_set_gate(14, (unsigned int)isr14, 0x08, 0x8E);
-    idt_set_gate(15, (unsigned int)isr15, 0x08, 0x8E);
-    idt_set_gate(16, (unsigned int)isr16, 0x08, 0x8E);
-    idt_set_gate(17, (unsigned int)isr17, 0x08, 0x8E);
-    idt_set_gate(18, (unsigned int)isr18, 0x08, 0x8E);
-    idt_set_gate(19, (unsigned int)isr19, 0x08, 0x8E);
-    idt_set_gate(20, (unsigned int)isr20, 0x08, 0x8E);
-    idt_set_gate(21, (unsigned int)isr21, 0x08, 0x8E);
-    idt_set_gate(22, (unsigned int)isr22, 0x08, 0x8E);
-    idt_set_gate(23, (unsigned int)isr23, 0x08, 0x8E);
-    idt_set_gate(24, (unsigned int)isr24, 0x08, 0x8E);
-    idt_set_gate(25, (unsigned int)isr25, 0x08, 0x8E);
-    idt_set_gate(26, (unsigned int)isr26, 0x08, 0x8E);
-    idt_set_gate(27, (unsigned int)isr27, 0x08, 0x8E);
-    idt_set_gate(28, (unsigned int)isr28, 0x08, 0x8E);
-    idt_set_gate(29, (unsigned int)isr29, 0x08, 0x8E);
-    idt_set_gate(30, (unsigned int)isr30, 0x08, 0x8E);
-    idt_set_gate(31, (unsigned int)isr31, 0x08, 0x8E);
+
 
     /* Load IDT */
     __asm__ __volatile__("lidt %0" : : "m"(idt_ptr));
