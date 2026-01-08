@@ -4,7 +4,7 @@
 section .text
 
 ; Segment selector constants (must match kernel/include/kernel/gdt.h)
-%define KERNEL_DS 0x10
+%define KERNEL_CS 0x08
 
 ; Macro for ISR without error code
 ; These push a dummy error code to keep stack uniform
