@@ -3,9 +3,9 @@
 
 #include <kernel/gdt.h>
 
-/* Macro to stringify for inline assembly */
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
+/* Macro to stringify for inline assembly (GDT-specific) */
+#define GDT_STR_HELPER(x) #x
+#define GDT_STR(x) GDT_STR_HELPER(x)
 
 /* GDT entry structure */
 typedef struct {
