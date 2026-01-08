@@ -3,6 +3,9 @@
 
 section .text
 
+; Segment selector constants (must match kernel/include/kernel/gdt.h)
+%define KERNEL_CS 0x08
+
 ; Macro for ISR without error code
 ; These push a dummy error code to keep stack uniform
 %macro ISR_NOERRCODE 1
@@ -81,10 +84,9 @@ isr_common_stub:
     push fs
     push gs
 
-    ; Load kernel data segment (0x10 = index 2 << 3)
-    mov ax, 0x10
+
     mov ds, ax
-    mov es, ax
+    mov ax, KERNEL_DS
     mov fs, ax
     mov gs, ax
 
