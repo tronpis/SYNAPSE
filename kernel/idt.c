@@ -22,7 +22,7 @@ typedef struct {
 static idt_entry_t idt[256];
 static idt_ptr_t idt_ptr;
 
-/* Interrupt handlers (minimal stubs) */
+/* Interrupt handlers (assembly stubs) */
 extern void isr0(void);  /* Divide by zero */
 extern void isr1(void);  /* Debug */
 extern void isr2(void);  /* Non-maskable interrupt */
@@ -56,8 +56,11 @@ extern void isr29(void); /* Reserved */
 extern void isr30(void); /* Reserved */
 extern void isr31(void); /* Reserved */
 
+/* Default interrupt handler stub (assembly) */
+extern void isr_common_stub(void);
+
 /* Set an IDT gate */
-static void idt_set_gate(unsigned char num, unsigned int base, 
+static void idt_set_gate(unsigned char num, unsigned int base,
                          unsigned short sel, unsigned char flags) {
     idt[num].offset_low = base & 0xFFFF;
     idt[num].offset_high = (base >> 16) & 0xFFFF;
@@ -66,20 +69,16 @@ static void idt_set_gate(unsigned char num, unsigned int base,
     idt[num].type_attr = flags;
 }
 
-/* Default interrupt handler */
-static void default_isr_handler(void) {
-    /* In a full implementation, this would log the interrupt */
-    __asm__ __volatile__("iret");
-}
-
 /* ISR handler called from assembly stub */
 void isr_handler(void) {
     /* Placeholder for ISR handling
      * In a full implementation, this would:
-     * - Identify which interrupt occurred
-     * - Log or handle the interrupt appropriately
+     * - Identify which interrupt occurred (read from stack)
+     * - Log or handle interrupt appropriately
      * - For page faults, handle memory management
      * - For system calls, switch to user space
+     *
+     * For now, all interrupts return safely via stub
      */
 }
 
@@ -89,12 +88,15 @@ void idt_init(void) {
     idt_ptr.limit = sizeof(idt_entry_t) * 256 - 1;
     idt_ptr.base = (unsigned int)&idt;
 
-    /* Clear IDT */
+    /* Clear IDT - set all entries to common stub */
     for (int i = 0; i < 256; i++) {
-        idt_set_gate(i, (unsigned int)default_isr_handler, 0x08, 0x8E);
+        idt_set_gate(i, (unsigned int)isr_common_stub, 0x08, 0x8E);
     }
 
-    /* Set up exception handlers */
+    /* Set up exception handlers with specific ISRs
+     * Note: All entries point to assembly stubs which safely
+     * preserve CPU state and call the C handler
+     */
     idt_set_gate(0, (unsigned int)isr0, 0x08, 0x8E);
     idt_set_gate(1, (unsigned int)isr1, 0x08, 0x8E);
     idt_set_gate(2, (unsigned int)isr2, 0x08, 0x8E);

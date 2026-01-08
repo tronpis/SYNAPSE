@@ -60,6 +60,36 @@ Cuándo leerlo:
 - Para entender el progreso del proyecto
 - Antes de comenzar la Fase 2
 
+### [IMPROVEMENTS_SUMMARY.md](IMPROVEMENTS_SUMMARY.md)
+**Tiempo de lectura**: 20 minutos
+**Para quién**: Desarrolladores y revisores de código
+
+Contenido:
+- Resumen de mejoras aplicadas
+- Detalles técnicos de cada fix
+- Métricas de calidad
+- Checklist de testing
+
+Cuándo leerlo:
+- Para entender las mejoras de code review
+- Para ver qué se ha mejorado
+- Antes de contribuir código nuevo
+
+### [CODE_REVIEW_FIXES.md](CODE_REVIEW_FIXES.md)
+**Tiempo de lectura**: 25 minutos
+**Para quién**: Desarrolladores y mantenedores
+
+Contenido:
+- Lista detallada de fixes de code review
+- Explicación técnica de cada issue
+- Archivos modificados
+- Consideraciones futuras
+
+Cuándo leerlo:
+- Para entender cambios recientes
+- Para aprender de problemas resueltos
+- Antes de hacer code review
+
 ---
 
 ## 🏗️ Para Desarrolladores
@@ -163,7 +193,7 @@ Cuándo leerlo:
 ## 📊 Resumen de Documentación
 
 | Documento | Páginas | Nivel | Tema Principal |
-|-----------|---------|-------|----------------|
+|-----------|---------|--------|----------------|
 | README.md | ~3 | Principiante | Visión general |
 | QUICKSTART.md | ~4 | Principiante | Inicio rápido |
 | ARCHITECTURE.md | ~8 | Intermedio | Arquitectura del sistema |
@@ -172,6 +202,8 @@ Cuándo leerlo:
 | ROADMAP.md | ~10 | Todos | Planificación |
 | TECHNICAL_REFERENCE.md | ~14 | Avanzado | Referencia técnica |
 | PHASE1_SUMMARY.md | ~6 | Todos | Resumen de Fase 1 |
+| IMPROVEMENTS_SUMMARY.md | ~7 | Intermedio | Mejoras del kernel |
+| CODE_REVIEW_FIXES.md | ~8 | Avanzado | Fixes técnicos |
 
 ---
 
@@ -194,15 +226,17 @@ Cuándo leerlo:
 1. QUICKSTART.md - Prueba rápida
 2. ARCHITECTURE.md - Visión arquitectónica
 3. TECHNICAL_REFERENCE.md - Detalles técnicos
-4. ROADMAP.md - Planificación futura
-5. DEVELOPMENT.md - Convenciones
+4. IMPROVEMENTS_SUMMARY.md - Ver mejoras
+5. ROADMAP.md - Planificación futura
+6. DEVELOPMENT.md - Convenciones
 
 ### Para Arquitectos/Líderes Técnicos
 1. README.md - Visión y objetivos
 2. PHASE1_SUMMARY.md - Estado actual
 3. ARCHITECTURE.md - Arquitectura detallada
 4. ROADMAP.md - Planificación completa
-5. TECHNICAL_REFERENCE.md - Detalles técnicos
+5. CODE_REVIEW_FIXES.md - Ver fixes técnicos
+6. TECHNICAL_REFERENCE.md - Detalles técnicos
 
 ---
 
@@ -233,6 +267,12 @@ Cuándo leerlo:
 
 **...saber qué se ha completado?**
 → Lee [PHASE1_SUMMARY.md](PHASE1_SUMMARY.md)
+
+**...entender las mejoras recientes?**
+→ Lee [IMPROVEMENTS_SUMMARY.md](IMPROVEMENTS_SUMMARY.md)
+
+**...ver los fixes técnicos?**
+→ Lee [CODE_REVIEW_FIXES.md](CODE_REVIEW_FIXES.md)
 
 **...entender el proyecto?**
 → Lee [README.md](../README.md)
@@ -266,6 +306,8 @@ Cuándo leerlo:
 - **Problemas técnicos**: Revisa [TECHNICAL_REFERENCE.md](TECHNICAL_REFERENCE.md)
 - **Cómo contribuir**: Revisa [CONTRIBUTING.md](../CONTRIBUTING.md)
 - **Configuración**: Revisa [DEVELOPMENT.md](DEVELOPMENT.md)
+- **Mejoras recientes**: Revisa [IMPROVEMENTS_SUMMARY.md](IMPROVEMENTS_SUMMARY.md)
+- **Fixes técnicos**: Revisa [CODE_REVIEW_FIXES.md](CODE_REVIEW_FIXES.md)
 - **Issues**: Abre un issue en el repositorio
 
 ---
@@ -278,7 +320,7 @@ La documentación se actualiza constantemente con:
 - Correcciones de errores
 - Nuevos ejemplos
 
-**Versión actual**: Fase 1
+**Versión actual**: Fase 1 (con mejoras de code review)
 **Última actualización**: Enero 2025
 
 ---
