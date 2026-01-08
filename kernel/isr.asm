@@ -3,6 +3,9 @@
 
 section .text
 
+; Segment selector constants (must match kernel/include/kernel/gdt.h)
+%define KERNEL_DS 0x10
+
 ; Macro for ISR without error code
 %macro ISR_NOERRCODE 1
   global isr%1
@@ -67,7 +70,7 @@ isr_common_stub:
     push fs
     push gs
 
-    mov ax, 0x10             ; Load kernel data segment
+    mov ax, KERNEL_DS        ; Load kernel data segment
     mov ds, ax
     mov es, ax
     mov fs, ax

@@ -1,11 +1,20 @@
 # SYNAPSE SO - Makefile
 # Licensed under GPLv3
 
+# Tool Requirements:
+#   - gcc with 32-bit support (gcc-multilib on Ubuntu/Debian)
+#   - nasm assembler
+#   - GNU ld linker
+#   - grub-mkrescue (grub2-common package)
+#   - qemu-system-x86_64 (for testing)
+# Run 'make check-tools' to verify all tools are installed
+
 # Compiler and tools
 CC = gcc
 AS = nasm
 LD = ld
 GRUB_MKRESCUE = grub-mkrescue
+QEMU = qemu-system-x86_64
 
 # Compiler flags
 CFLAGS = -m32 -ffreestanding -nostdlib -fno-stack-protector -fno-pie -Wall -Wextra -O2
@@ -51,15 +60,21 @@ $(BOOT_OBJ): $(BOOT_ASM) | $(BUILD_DIR)
 $(KERNEL_ASM_OBJ): $(KERNEL_ASM) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) $< -o $@
 
-# Compile kernel C files
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
+# Compile kernel C files (explicit rules to avoid pattern ambiguity)
+$(BUILD_DIR)/kernel.o: $(KERNEL_DIR)/kernel.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
-    @mkdir -p $(dir $@)
-    $(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
-# Compile library files
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR)
-    @mkdir -p $(dir $@)
+$(BUILD_DIR)/vga.o: $(KERNEL_DIR)/vga.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+
+$(BUILD_DIR)/gdt.o: $(KERNEL_DIR)/gdt.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+
+$(BUILD_DIR)/idt.o: $(KERNEL_DIR)/idt.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+
+# Compile library files (explicit rules)
+$(BUILD_DIR)/string.o: $(KERNEL_DIR)/lib/string.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # Link kernel
@@ -78,11 +93,26 @@ $(ISO_IMAGE): $(KERNEL_BIN)
 
 # Run kernel in QEMU
 run: $(ISO_IMAGE)
-	qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M
+	$(QEMU) -cdrom $(ISO_IMAGE) -m 512M
 
 # Run kernel with debug
 debug: $(ISO_IMAGE)
-	qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -d int,cpu_reset
+	$(QEMU) -cdrom $(ISO_IMAGE) -m 512M -d int,cpu_reset
+
+# Run kernel with GDB server
+gdb: $(ISO_IMAGE)
+	$(QEMU) -cdrom $(ISO_IMAGE) -m 512M -s -S
+
+# Check required tools
+check-tools:
+	@echo "Checking required build tools..."
+	@command -v $(CC) >/dev/null 2>&1 || { echo "Error: gcc not found"; exit 1; }
+	@$(CC) -m32 -v >/dev/null 2>&1 || { echo "Error: gcc 32-bit support not found (install gcc-multilib)"; exit 1; }
+	@command -v $(AS) >/dev/null 2>&1 || { echo "Error: nasm not found"; exit 1; }
+	@command -v $(LD) >/dev/null 2>&1 || { echo "Error: ld not found"; exit 1; }
+	@command -v $(GRUB_MKRESCUE) >/dev/null 2>&1 || { echo "Error: grub-mkrescue not found"; exit 1; }
+	@command -v $(QEMU) >/dev/null 2>&1 || { echo "Warning: qemu-system-x86_64 not found (needed for 'make run')"; }
+	@echo "All required tools are available!"
 
 # Clean build files
 clean:
@@ -100,12 +130,14 @@ help:
 	@echo "SYNAPSE SO Build System"
 	@echo "======================="
 	@echo "Targets:"
-	@echo "  all      - Build kernel and ISO (default)"
-	@echo "  run      - Run kernel in QEMU"
-	@echo "  debug    - Run kernel in QEMU with debug"
-	@echo "  clean    - Remove build files"
-	@echo "  rebuild  - Clean and rebuild"
-	@echo "  size     - Show kernel size information"
-	@echo "  help     - Show this help message"
+	@echo "  all         - Build kernel and ISO (default)"
+	@echo "  run         - Run kernel in QEMU"
+	@echo "  debug       - Run kernel in QEMU with debug output"
+	@echo "  gdb         - Run kernel in QEMU with GDB server (-s -S)"
+	@echo "  check-tools - Verify all required tools are installed"
+	@echo "  clean       - Remove build files"
+	@echo "  rebuild     - Clean and rebuild"
+	@echo "  size        - Show kernel size information"
+	@echo "  help        - Show this help message"
 
-.PHONY: all run debug clean rebuild size help
+.PHONY: all run debug gdb check-tools clean rebuild size help
