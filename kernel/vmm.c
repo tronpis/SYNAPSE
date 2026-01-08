@@ -38,7 +38,8 @@ static inline uint32_t* get_pte(page_directory_t* pd, uint32_t virt_addr) {
     if (!(*pde & PAGE_PRESENT)) {
         return 0;
     }
-    page_table_t* pt = (page_table_t*)(*pde & 0xFFFFF000);
+    /* Convert physical page table address to kernel virtual address before dereferencing */
+    page_table_t* pt = (page_table_t*)(((*pde) & 0xFFFFF000) + KERNEL_VIRT_START);
     return &pt->entries[get_page_index(virt_addr)];
 }
 
