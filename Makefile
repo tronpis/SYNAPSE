@@ -117,8 +117,7 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 # LIBRARY FILES
 # ============================================================================
 
-$(BUILD_DIR)/string.o: $(KERNEL_DIR)/lib/string.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR)
 
 # ============================================================================
 # LINKING
