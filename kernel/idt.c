@@ -2,7 +2,7 @@
 /* Licensed under GPLv3 */
 
 #include <kernel/idt.h>
-#include <kernel/gdt.h>
+/* #include <kernel/gdt.h> */
 
 /* IDT entry structure (for 32-bit) */
 typedef struct {
