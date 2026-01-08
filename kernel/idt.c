@@ -95,7 +95,8 @@ static void idt_set_gate(unsigned char num, unsigned int base,
 void isr_handler(registers_t *regs) {
     /* Identify which interrupt occurred */
     if (regs->int_no < 32) {
-        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        /* Prevent further interrupts while we print halt message to avoid reentrancy */
+        __asm__ __volatile__("cli");
         vga_print("\n[EXCEPTION] ");
         vga_print_dec(regs->int_no);
         vga_print(" - Error Code: ");
