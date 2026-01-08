@@ -8,11 +8,19 @@
 extern "C" {
 #endif
 
+/* Register state structure */
+typedef struct {
+    unsigned int gs, fs, es, ds;      /* Segment registers */
+    unsigned int edi, esi, ebp, esp, ebx, edx, ecx, eax; /* Pushed by pusha */
+    unsigned int int_no, err_code;    /* Interrupt number and error code */
+    unsigned int eip, cs, eflags, useresp, ss; /* Pushed by CPU */
+} registers_t;
+
 /* IDT initialization function */
 void idt_init(void);
 
 /* ISR handler function (called from assembly) */
-void isr_handler(void);
+void isr_handler(registers_t *regs);
 
 #ifdef __cplusplus
 }

@@ -46,10 +46,6 @@ static void gdt_set_entry(int num, unsigned int base, unsigned int limit,
     gdt[num].access = access;
 }
 
-/* Define segment selectors */
-#define KERNEL_CS 0x08  /* Index 1 << 3 */
-#define KERNEL_DS 0x10  /* Index 2 << 3 */
-
 /* Initialize GDT */
 void gdt_init(void) {
     /* Setup GDT pointer */
@@ -81,5 +77,21 @@ void gdt_init(void) {
     /* User Data Segment */
     gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
-
+    /* Load GDT and reload segment registers */
+    __asm__ __volatile__(
+        "cli\n"                          /* Disable interrupts */
+        "lgdt %0\n"                      /* Load GDT */
+        "movw %1, %%ax\n"               /* Load kernel data segment */
+        "movw %%ax, %%ds\n"
+        "movw %%ax, %%es\n"
+        "movw %%ax, %%fs\n"
+        "movw %%ax, %%gs\n"
+        "movw %%ax, %%ss\n"
+        "pushw %2\n"                    /* Push CS selector (16-bit) */
+        "pushl $1f\n"                   /* Push return address */
+        "lretl\n"                       /* Far return to reload CS */
+        "1:\n"
+        : : "m"(gdt_ptr), "i"(GDT_KERNEL_DATA), "i"(GDT_KERNEL_CODE)
+        : "ax", "memory"
+    );
 }
