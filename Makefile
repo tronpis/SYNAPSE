@@ -54,9 +54,12 @@ $(KERNEL_ASM_OBJ): $(KERNEL_ASM) | $(BUILD_DIR)
 # Compile kernel C files
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+    @mkdir -p $(dir $@)
+    $(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # Compile library files
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR)
+    @mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # Link kernel
