@@ -150,7 +150,10 @@ int elf_load(uint8_t* elf_data, uint32_t size, uint32_t* entry_point) {
 /* Load ELF binary into a process */
 int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
     (void)size; /* Unused parameter */
-    elf32_header_t* header = (elf32_header_t*)elf_data;
+    if (size < sizeof(elf32_header_t)) {
+        vga_print("[-] ELF data too small for header\n");
+        return -1;
+    }
 
     if (proc == 0) {
         return -1;
