@@ -11,6 +11,9 @@ static page_directory_t* kernel_directory;
 /* Current page directory */
 static page_directory_t* current_directory;
 
+/* Physical address of kernel page directory */
+static uint32_t kernel_pd_phys;
+
 /* Kernel virtual address space starts at 3GB */
 #define KERNEL_VIRT_START 0xC0000000
 
@@ -48,7 +51,11 @@ void vmm_init(void) {
     vga_print("[+] Initializing Virtual Memory Manager...\n");
 
     /* Allocate kernel page directory */
-    uint32_t kernel_pd_phys = pmm_alloc_frame();
+    kernel_pd_phys = pmm_alloc_frame();
+    if (kernel_pd_phys == 0) {
+        vga_print("[-] Failed to allocate kernel page directory!\n");
+        return;
+    }
     kernel_directory = (page_directory_t*)(kernel_pd_phys + KERNEL_VIRT_START);
     current_directory = kernel_directory;
 
@@ -74,15 +81,15 @@ void vmm_init(void) {
                      PAGE_PRESENT | PAGE_WRITE);
     }
 
-    /* Enable paging */
+    /* Enable paging - use the saved physical address directly */
     __asm__ volatile(
-        "mov %0, %%cr3\n"     /* Load CR3 with page directory address */
+        "mov %0, %%cr3\n"     /* Load CR3 with page directory physical address */
         "mov %%cr0, %%eax\n"
         "or $0x80000000, %%eax\n"  /* Set paging bit */
         "mov %%eax, %%cr0\n"
         :
-        : "r"((uint32_t)kernel_directory - KERNEL_VIRT_START + KERNEL_PHYS_BASE)
-        : "r"((uint32_t)kernel_directory - KERNEL_VIRT_START)
+        : "r"(kernel_pd_phys)
+        : "%eax"
     );
 
     vga_print("    Paging enabled\n");
@@ -152,6 +159,10 @@ uint32_t vmm_get_phys_addr(uint32_t virt_addr) {
 page_directory_t* vmm_create_page_directory(void) {
     /* Allocate page directory */
     uint32_t pd_phys = pmm_alloc_frame();
+    if (pd_phys == 0) {
+        vga_print("[-] Failed to allocate page directory!\n");
+        return 0;
+    }
     page_directory_t* pd = (page_directory_t*)(pd_phys + KERNEL_VIRT_START);
 
     /* Clear page directory */
@@ -169,10 +180,17 @@ page_directory_t* vmm_create_page_directory(void) {
 
 /* Switch to a new page directory */
 void vmm_switch_page_directory(page_directory_t* pd) {
+    if (pd == 0) {
+        vga_print("[-] Cannot switch to null page directory!\n");
+        return;
+    }
+
     current_directory = pd;
 
-    /* Load CR3 */
-    uint32_t pd_phys = (uint32_t)pd - KERNEL_VIRT_START + KERNEL_PHYS_BASE;
+    /* Calculate physical address from virtual address */
+    uint32_t pd_phys = (uint32_t)pd - KERNEL_VIRT_START;
+
+    /* Load CR3 with physical address */
     __asm__ volatile("mov %0, %%cr3" : : "r"(pd_phys));
 }
 
