@@ -74,6 +74,11 @@ int elf_load(uint8_t* elf_data, uint32_t size, uint32_t* entry_point) {
     vga_print("\n");
 
     /* Load program segments */
+    /* Validate program header table fits in provided ELF data */
+    if ((uint32_t)header->e_phoff + (uint32_t)header->e_phnum * (uint32_t)header->e_phentsize > size) {
+        vga_print("[-] Program headers exceed ELF size\n");
+        return -1;
+    }
     elf32_phdr_t* phdr = (elf32_phdr_t*)(elf_data + header->e_phoff);
 
     for (uint32_t i = 0; i < header->e_phnum; i++) {
@@ -84,6 +89,16 @@ int elf_load(uint8_t* elf_data, uint32_t size, uint32_t* entry_point) {
             vga_print_dec(phdr->p_memsz);
             vga_print(" bytes)\n");
 
+            /* Validate sizes/offsets */
+            if (phdr->p_filesz > phdr->p_memsz) {
+                vga_print("[-] Segment file size larger than memory size\n");
+                return -1;
+            }
+            if (phdr->p_offset + phdr->p_filesz > size) {
+                vga_print("[-] Segment exceeds ELF data size\n");
+                return -1;
+            }
+
             /* Calculate number of pages needed */
             uint32_t start_page = phdr->p_vaddr & 0xFFFFF000;
             uint32_t end_page = (phdr->p_vaddr + phdr->p_memsz + 0xFFF) & 0xFFFFF000;
@@ -91,8 +106,12 @@ int elf_load(uint8_t* elf_data, uint32_t size, uint32_t* entry_point) {
             /* Map pages */
             for (uint32_t addr = start_page; addr < end_page; addr += PAGE_SIZE) {
                 uint32_t phys = pmm_alloc_frame();
-                uint32_t flags = 0;
+                if (phys == 0) {
+                    vga_print("[-] Failed to allocate physical frame\n");
+                    return -1;
+                }
 
+                uint32_t flags = 0;
                 if (phdr->p_flags & PF_W) {
                     flags |= PAGE_WRITE;
                 }
@@ -106,7 +125,9 @@ int elf_load(uint8_t* elf_data, uint32_t size, uint32_t* entry_point) {
             uint8_t* src = elf_data + phdr->p_offset;
 
             /* Copy file data */
-            memcpy(dest, src, phdr->p_filesz);
+            if (phdr->p_filesz > 0) {
+                memcpy(dest, src, phdr->p_filesz);
+            }
 
             /* Zero out bss */
             if (phdr->p_memsz > phdr->p_filesz) {
