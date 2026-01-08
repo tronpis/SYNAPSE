@@ -23,41 +23,8 @@ typedef struct {
 static gdt_entry_t gdt[5];
 static gdt_ptr_t gdt_ptr;
 
-/* TSS structure (not used in minimal version) */
-typedef struct {
-    unsigned int prev_tss;
-    unsigned int esp0;
-    unsigned int ss0;
-    unsigned int esp1;
-    unsigned int ss1;
-    unsigned int esp2;
-    unsigned int ss2;
-    unsigned int cr3;
-    unsigned int eip;
-    unsigned int eflags;
-    unsigned int eax;
-    unsigned int ecx;
-    unsigned int edx;
-    unsigned int ebx;
-    unsigned int esp;
-    unsigned int ebp;
-    unsigned int esi;
-    unsigned int edi;
-    unsigned int es;
-    unsigned int cs;
-    unsigned int ss;
-    unsigned int ds;
-    unsigned int fs;
-    unsigned int gs;
-    unsigned int ldt;
-    unsigned short trap;
-    unsigned short iomap_base;
-} __attribute__((packed)) tss_entry_t;
-
-static tss_entry_t tss;
-
 /* Function to set a GDT entry */
-static void gdt_set_entry(int num, unsigned int base, unsigned int limit, 
+static void gdt_set_entry(int num, unsigned int base, unsigned int limit,
                           unsigned char access, unsigned char gran) {
     /* Set base address */
     gdt[num].base_low = (base & 0xFFFF);
@@ -74,6 +41,10 @@ static void gdt_set_entry(int num, unsigned int base, unsigned int limit,
     /* Set access byte */
     gdt[num].access = access;
 }
+
+/* Define segment selectors */
+#define KERNEL_CS 0x08  /* Index 1 << 3 */
+#define KERNEL_DS 0x10  /* Index 2 << 3 */
 
 /* Initialize GDT */
 void gdt_init(void) {
@@ -106,18 +77,18 @@ void gdt_init(void) {
     /* User Data Segment */
     gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
-    /* Load GDT */
-    __asm__ __volatile__("lgdt %0" : : "m"(gdt_ptr));
-
-    /* Reload segment registers */
-    unsigned int temp;
+    /* Load GDT and reload segment registers */
     __asm__ __volatile__(
-        "movw $0x10, %ax\n"
-        "movw %ax, %ds\n"
-        "movw %ax, %es\n"
-        "movw %ax, %fs\n"
-        "movw %ax, %gs\n"
-        "movw %ax, %ss\n"
-        : : : "ax"
+        "lgdt %0\n"                      /* Load GDT */
+        "movw %1, %%ax\n"               /* Load kernel data segment */
+        "movw %%ax, %%ds\n"
+        "movw %%ax, %%es\n"
+        "movw %%ax, %%fs\n"
+        "movw %%ax, %%gs\n"
+        "movw %%ax, %%ss\n"
+        "ljmp %2, $reload_cs\n"         /* Far jump to reload CS */
+        "reload_cs:\n"
+        : : "m"(gdt_ptr), "i"(KERNEL_DS), "i"(KERNEL_CS)
+        : "ax"
     );
 }
