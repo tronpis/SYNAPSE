@@ -86,9 +86,11 @@ void gdt_init(void) {
         "movw %%ax, %%fs\n"
         "movw %%ax, %%gs\n"
         "movw %%ax, %%ss\n"
-        "ljmp %2, $reload_cs\n"         /* Far jump to reload CS */
-        "reload_cs:\n"
+        "pushl %2\n"                    /* Push CS selector */
+        "pushl $1f\n"                   /* Push return address */
+        "lretl\n"                       /* Far return to reload CS */
+        "1:\n"
         : : "m"(gdt_ptr), "i"(KERNEL_DS), "i"(KERNEL_CS)
-        : "ax"
+        : "ax", "memory"
     );
 }

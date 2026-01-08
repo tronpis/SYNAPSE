@@ -2,6 +2,7 @@
 /* Licensed under GPLv3 */
 
 #include <kernel/idt.h>
+#include <kernel/vga.h>
 
 /* IDT entry structure (for 32-bit) */
 typedef struct {
@@ -57,6 +58,7 @@ extern void isr30(void); /* Reserved */
 extern void isr31(void); /* Reserved */
 
 /* Default interrupt handler stub (assembly) */
+extern void isr_default(void);
 extern void isr_common_stub(void);
 
 /* Set an IDT gate */
@@ -70,16 +72,19 @@ static void idt_set_gate(unsigned char num, unsigned int base,
 }
 
 /* ISR handler called from assembly stub */
-void isr_handler(void) {
-    /* Placeholder for ISR handling
-     * In a full implementation, this would:
-     * - Identify which interrupt occurred (read from stack)
-     * - Log or handle interrupt appropriately
-     * - For page faults, handle memory management
-     * - For system calls, switch to user space
-     *
-     * For now, all interrupts return safely via stub
-     */
+void isr_handler(registers_t *regs) {
+    /* Identify which interrupt occurred */
+    if (regs->int_no < 32) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_print("\n[EXCEPTION] ");
+        vga_print_dec(regs->int_no);
+        vga_print(" - Error Code: ");
+        vga_print_hex(regs->err_code);
+        vga_print("\nKernel Halted.\n");
+        while (1) {
+            __asm__ __volatile__("hlt");
+        }
+    }
 }
 
 /* Initialize IDT */
@@ -88,9 +93,9 @@ void idt_init(void) {
     idt_ptr.limit = sizeof(idt_entry_t) * 256 - 1;
     idt_ptr.base = (unsigned int)&idt;
 
-    /* Clear IDT - set all entries to common stub */
+    /* Clear IDT - set all entries to default stub */
     for (int i = 0; i < 256; i++) {
-        idt_set_gate(i, (unsigned int)isr_common_stub, 0x08, 0x8E);
+        idt_set_gate(i, (unsigned int)isr_default, 0x08, 0x8E);
     }
 
     /* Set up exception handlers with specific ISRs

@@ -59,6 +59,14 @@ ISR_NOERRCODE 29  ; Reserved
 ISR_NOERRCODE 30  ; Reserved
 ISR_NOERRCODE 31  ; Reserved
 
+; Default ISR for unhandled interrupts
+global isr_default
+isr_default:
+    cli
+    push byte 0      ; dummy error code
+    push dword 255   ; reserved ISR number for unassigned
+    jmp isr_common_stub
+
 ; Common ISR handler - called by all ISRs
 ; Stack layout on entry:
 ;   [esp+20] Error code (or dummy 0)
@@ -89,7 +97,9 @@ isr_common_stub:
     mov gs, ax
 
     ; Call C handler
+    push esp                 ; Push pointer to registers_t struct
     call isr_handler
+    add esp, 4               ; Clean up argument from stack
 
     ; Restore segment registers
     pop gs
@@ -106,3 +116,4 @@ isr_common_stub:
 
     ; Return from interrupt
     iret
+section .note.GNU-stack noalloc noexec nowrite progbits
