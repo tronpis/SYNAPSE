@@ -55,6 +55,10 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     idt_init();
     vga_print("    IDT loaded successfully\n");
 
+    /* Enable interrupts */
+    __asm__ __volatile__("sti");
+    vga_print("[+] Interrupts enabled\n");
+
     /* Memory information */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     vga_print("\nSystem Information:\n");

@@ -79,6 +79,7 @@ void gdt_init(void) {
 
     /* Load GDT and reload segment registers */
     __asm__ __volatile__(
+        "cli\n"                          /* Disable interrupts */
         "lgdt %0\n"                      /* Load GDT */
         "movw %1, %%ax\n"               /* Load kernel data segment */
         "movw %%ax, %%ds\n"
