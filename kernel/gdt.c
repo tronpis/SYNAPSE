@@ -81,5 +81,4 @@ void gdt_init(void) {
     /* User Data Segment */
     gdt_set_entry(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
 
-+
 }
