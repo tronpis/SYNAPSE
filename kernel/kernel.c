@@ -18,7 +18,7 @@ typedef struct {
 } __attribute__((packed)) multiboot_info_t;
 
 /* Kernel main function - entry point from bootloader */
-void kernel_main(multiboot_info_t* mbi, unsigned int magic) {
+void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     /* Clear screen */
     vga_clear_screen();
 
