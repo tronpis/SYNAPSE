@@ -86,7 +86,7 @@ isr_common_stub:
 
 
     mov ds, ax
-    mov es, ax
+    mov ax, KERNEL_DS
     mov fs, ax
     mov gs, ax
 
