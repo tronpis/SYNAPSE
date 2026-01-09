@@ -51,9 +51,12 @@ static void worker_b(void) {
         uint32_t now = timer_get_ticks();
         if (now - last >= 137) {
             last = now;
+            /* Make the VGA prints atomic to avoid concurrent corruption. */
+            __asm__ __volatile__("cli");
             vga_print("[B] ticks=");
             vga_print_dec(now);
             vga_print("\n");
+            __asm__ __volatile__("sti");
         }
         __asm__ __volatile__("hlt");
     }
