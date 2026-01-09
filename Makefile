@@ -171,7 +171,7 @@ debug: $(ISO_IMAGE)
 
 # Run kernel in QEMU with GDB server
 gdb: $(ISO_IMAGE)
-    qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S &
+    nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
     @echo "QEMU started with GDB server on localhost:1234"
     @echo "Connect with: gdb build/kernel.elf"
     @echo "Then use: target remote :1234"
