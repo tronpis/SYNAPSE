@@ -170,7 +170,7 @@ debug: $(ISO_IMAGE)
     qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -d int,cpu_reset
 
 # Run kernel in QEMU with GDB server
-gdb: $(ISO_IMAGE)
+nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
     nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
     @echo "QEMU started with GDB server on localhost:1234"
     @echo "Connect with: gdb build/kernel.elf"
