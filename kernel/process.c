@@ -21,17 +21,27 @@ static process_t* current_process = 0;
 static pid_t next_pid = 1;
 
 static void process_list_insert(process_t* proc) {
+    unsigned int flags;
+    /* Save EFLAGS and disable interrupts to make the insertion atomic.
+       This avoids list corruption if an interrupt handler or another CPU
+       traverses/modifies `process_list`. */
+    asm volatile("pushf; pop %0; cli" : "=r"(flags) :: "memory");
+
     if (process_list == 0) {
         process_list = proc;
         proc->next = proc;
         proc->prev = proc;
-        return;
+    } else {
+        proc->next = process_list;
+        proc->prev = process_list->prev;
+        process_list->prev->next = proc;
+        process_list->prev = proc;
     }
 
-    proc->next = process_list;
-    proc->prev = process_list->prev;
-    process_list->prev->next = proc;
-    process_list->prev = proc;
+    /* Restore interrupts to previous state (IF flag). */
+    if (flags & (1 << 9)) {
+        asm volatile("sti");
+    }
 }
 
 static uint32_t* stack_push(uint32_t* sp, uint32_t value) {
