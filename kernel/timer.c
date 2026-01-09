@@ -11,7 +11,7 @@
 #define PIT_COMMAND_MODE3 0x36
 
 static volatile uint32_t timer_ticks;
-static uint32_t timer_frequency;
+static uint32_t timer_frequency __attribute__((unused));
 
 void timer_init(uint32_t frequency_hz) {
     timer_ticks = 0;
