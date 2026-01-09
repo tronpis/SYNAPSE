@@ -96,8 +96,8 @@ static void idt_set_gate(unsigned char num, unsigned int base,
 
 /* ISR handler called from assembly stub */
 registers_t* isr_handler(registers_t *regs) {
-    if (regs == NULL) {
-        return NULL;
+    if (regs == 0) {
+        return 0;
     }
 
     /* Identify which interrupt occurred */
@@ -128,7 +128,13 @@ registers_t* isr_handler(registers_t *regs) {
     if (regs->int_no >= 32 && regs->int_no <= 47) {
         registers_t* new_regs = regs;
 
-        /* Send EOI early to acknowledge this IRQ before any potential context switch */
+        /* Send EOI early before scheduler_tick (which may context switch).
+           Safety: Scheduler must not assume IRQ ownership after EOI.
+           - EOI acknowledges IRQ to PIC, allowing nested IRQs if re-enabled
+           - Scheduler only selects next process and returns registers_t*
+           - Assembly stub (isr_common_stub) uses returned pointer to restore context
+           - iret restores EFLAGS which re-enables interrupts
+           This is safe because no code assumes IRQ state after EOI. */
         if (regs->int_no >= 40) {
             /* Slave PIC */
             outb(0xA0, 0x20);
@@ -144,7 +150,6 @@ registers_t* isr_handler(registers_t *regs) {
                 new_regs = regs;
             }
         }
-        outb(0x20, 0x20);
 
         return new_regs;
     }

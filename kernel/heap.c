@@ -25,7 +25,6 @@ static inline uint32_t align_size(uint32_t size, uint32_t alignment) {
 static heap_block_t* find_free_block(uint32_t size) {
     heap_block_t* block = heap_head;
     uint32_t needed = align_size(size, HEAP_ALIGN);
-    heap_block_t* block = heap_head;
 
     while (block != 0) {
         if (block->is_free && block->size >= needed) {

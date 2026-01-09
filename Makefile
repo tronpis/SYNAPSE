@@ -61,20 +61,20 @@ BOOT_ASM = $(BOOT_DIR)/boot.asm
 
 # Kernel assembly files
 KERNEL_ASM = $(KERNEL_DIR)/isr.asm \
-             $(KERNEL_DIR)/switch.asm
+	$(KERNEL_DIR)/switch.asm
 
 # Kernel C source files (explicit list to avoid pattern conflicts)
 KERNEL_C_FILES = $(KERNEL_DIR)/kernel.c \
-                $(KERNEL_DIR)/vga.c \
-                $(KERNEL_DIR)/gdt.c \
-                $(KERNEL_DIR)/idt.c \
-                $(KERNEL_DIR)/pmm.c \
-                $(KERNEL_DIR)/vmm.c \
-                $(KERNEL_DIR)/heap.c \
-                $(KERNEL_DIR)/process.c \
-                $(KERNEL_DIR)/scheduler.c \
-                $(KERNEL_DIR)/timer.c \
-                $(KERNEL_DIR)/elf.c
+	$(KERNEL_DIR)/vga.c \
+	$(KERNEL_DIR)/gdt.c \
+	$(KERNEL_DIR)/idt.c \
+	$(KERNEL_DIR)/pmm.c \
+	$(KERNEL_DIR)/vmm.c \
+	$(KERNEL_DIR)/heap.c \
+	$(KERNEL_DIR)/process.c \
+	$(KERNEL_DIR)/scheduler.c \
+	$(KERNEL_DIR)/timer.c \
+	$(KERNEL_DIR)/elf.c
 
 # Library C source files
 KERNEL_LIB_FILES = $(KERNEL_DIR)/lib/string.c
@@ -96,7 +96,7 @@ all: $(ISO_IMAGE)
 
 # Create build directory
 $(BUILD_DIR):
-    @mkdir -p $(BUILD_DIR)
+	@mkdir -p $(BUILD_DIR)
 
 # ============================================================================
 # BOOT CODE
@@ -104,7 +104,7 @@ $(BUILD_DIR):
 
 # Compile boot assembly
 $(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR)
-    $(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================================
 # KERNEL ASSEMBLY
@@ -112,24 +112,24 @@ $(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR)
 
 # Compile kernel assembly files
 $(BUILD_DIR)/isr.o: $(KERNEL_DIR)/isr.asm | $(BUILD_DIR)
-    $(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) $< -o $@
 
 $(BUILD_DIR)/switch.o: $(KERNEL_DIR)/switch.asm | $(BUILD_DIR)
-    $(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================================
 # KERNEL C FILES (explicit rules to avoid ambiguity)
 # ============================================================================
 
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
-    $(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # ============================================================================
 # LIBRARY FILES
 # ============================================================================
 
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR)
-    $(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
+	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # ============================================================================
 # LINKING
@@ -141,7 +141,7 @@ KERNEL_ASM_OBJS = $(BUILD_DIR)/isr.o $(BUILD_DIR)/switch.o
 
 # Link all object files into kernel ELF
 $(KERNEL_BIN): $(BOOT_OBJ) $(KERNEL_ASM_OBJS) $(KERNEL_C_OBJS) $(KERNEL_LIB_OBJS)
-    $(LD) $(LDFLAGS) -o $@ $^
+	$(LD) $(LDFLAGS) -o $@ $^
 
 # ============================================================================
 # ISO CREATION
@@ -149,13 +149,13 @@ $(KERNEL_BIN): $(BOOT_OBJ) $(KERNEL_ASM_OBJS) $(KERNEL_C_OBJS) $(KERNEL_LIB_OBJS
 
 # Create bootable ISO image
 $(ISO_IMAGE): $(KERNEL_BIN)
-    @mkdir -p $(ISO_DIR)/boot/grub
-    @cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.elf
-    @echo "menuentry \"SYNAPSE SO\" {" > $(ISO_DIR)/boot/grub/grub.cfg
-    @echo "    multiboot /boot/kernel.elf" >> $(ISO_DIR)/boot/grub/grub.cfg
-    @echo "    boot" >> $(ISO_DIR)/boot/grub/grub.cfg
-    @echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
-    $(GRUB_MKRESCUE) -o $@ $(ISO_DIR)
+	@mkdir -p $(ISO_DIR)/boot/grub
+	@cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.elf
+	@echo "menuentry \"SYNAPSE SO\" {" > $(ISO_DIR)/boot/grub/grub.cfg
+	@echo "    multiboot /boot/kernel.elf" >> $(ISO_DIR)/boot/grub/grub.cfg
+	@echo "    boot" >> $(ISO_DIR)/boot/grub/grub.cfg
+	@echo "}" >> $(ISO_DIR)/boot/grub/grub.cfg
+	$(GRUB_MKRESCUE) -o $@ $(ISO_DIR)
 
 # ============================================================================
 # TESTING
@@ -163,18 +163,18 @@ $(ISO_IMAGE): $(KERNEL_BIN)
 
 # Run kernel in QEMU
 run: $(ISO_IMAGE)
-    qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M
+	qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M
 
 # Run kernel with debug output
 debug: $(ISO_IMAGE)
-    qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -d int,cpu_reset
+	qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -d int,cpu_reset
 
 # Run kernel in QEMU with GDB server
-nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
-    nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
-    @echo "QEMU started with GDB server on localhost:1234"
-    @echo "Connect with: gdb build/kernel.elf"
-    @echo "Then use: target remote :1234"
+gdb: $(ISO_IMAGE)
+	nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
+	@echo "QEMU started with GDB server on localhost:1234"
+	@echo "Connect with: gdb build/kernel.elf"
+	@echo "Then use: target remote :1234"
 
 # ============================================================================
 # CLEANUP
@@ -182,9 +182,9 @@ nohup qemu-system-x86_64 -cdrom $(ISO_IMAGE) -m 512M -s -S >/dev/null 2>&1 &
 
 # Remove all build artifacts
 clean:
-    @echo "Cleaning build files..."
-    @rm -rf $(BUILD_DIR) $(ISO_DIR) $(ISO_IMAGE)
-    @echo "Clean complete."
+	@echo "Cleaning build files..."
+	@rm -rf $(BUILD_DIR) $(ISO_DIR) $(ISO_IMAGE)
+	@echo "Clean complete."
 
 # ============================================================================
 # UTILITY TARGETS
@@ -195,42 +195,42 @@ rebuild: clean all
 
 # Show kernel size information
 size: $(KERNEL_BIN)
-    @echo "Kernel size information:"
-    size $(KERNEL_BIN)
-    @echo ""
-    @echo "Section sizes:"
-    size -A $(KERNEL_BIN)
+	@echo "Kernel size information:"
+	size $(KERNEL_BIN)
+	@echo ""
+	@echo "Section sizes:"
+	size -A $(KERNEL_BIN)
 
 # Check if required tools are installed
 check-tools:
-    @echo "Checking for required build tools..."
-    @which gcc > /dev/null && echo "✓ gcc" || echo "✗ gcc (NOT FOUND)"
-    @which nasm > /dev/null && echo "✓ nasm" || echo "✗ nasm (NOT FOUND)"
-    @which ld > /dev/null && echo "✓ ld" || echo "✗ ld (NOT FOUND)"
-    @which grub-mkrescue > /dev/null && echo "✓ grub-mkrescue" || echo "✗ grub-mkrescue (NOT FOUND)"
-    @which qemu-system-x86_64 > /dev/null && echo "✓ qemu-system-x86_64 (optional)" || echo "⚠ qemu-system-x86_64 (not installed, needed for 'run' target)"
+	@echo "Checking for required build tools..."
+	@which gcc > /dev/null && echo "✓ gcc" || echo "✗ gcc (NOT FOUND)"
+	@which nasm > /dev/null && echo "✓ nasm" || echo "✗ nasm (NOT FOUND)"
+	@which ld > /dev/null && echo "✓ ld" || echo "✗ ld (NOT FOUND)"
+	@which grub-mkrescue > /dev/null && echo "✓ grub-mkrescue" || echo "✗ grub-mkrescue (NOT FOUND)"
+	@which qemu-system-x86_64 > /dev/null && echo "✓ qemu-system-x86_64 (optional)" || echo "⚠ qemu-system-x86_64 (not installed, needed for 'run' target)"
 
 # Show help
 help:
-    @echo "SYNAPSE SO Build System"
-    @echo "======================="
-    @echo ""
-    @echo "Usage: make [target]"
-    @echo ""
-    @echo "Targets:"
-    @echo "  all          - Build kernel and ISO (default)"
-    @echo "  run          - Run kernel in QEMU"
-    @echo "  debug        - Run kernel in QEMU with debug output"
-    @echo "  gdb          - Run kernel in QEMU with GDB server"
-    @echo "  clean        - Remove build files"
-    @echo "  rebuild      - Clean and rebuild"
-    @echo "  size         - Show kernel size information"
-    @echo "  check-tools  - Check if required tools are installed"
-    @echo "  help         - Show this help message"
-    @echo ""
-    @echo "Prerequisites:"
-    @echo "  Install tools: sudo apt-get install gcc-multilib nasm binutils grub-pc-bin xorriso qemu-system-x86"
-    @echo "  Verify tools: make check-tools"
+	@echo "SYNAPSE SO Build System"
+	@echo "======================="
+	@echo ""
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@echo "  all          - Build kernel and ISO (default)"
+	@echo "  run          - Run kernel in QEMU"
+	@echo "  debug        - Run kernel in QEMU with debug output"
+	@echo "  gdb          - Run kernel in QEMU with GDB server"
+	@echo "  clean        - Remove build files"
+	@echo "  rebuild      - Clean and rebuild"
+	@echo "  size         - Show kernel size information"
+	@echo "  check-tools  - Check if required tools are installed"
+	@echo "  help         - Show this help message"
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  Install tools: sudo apt-get install gcc-multilib nasm binutils grub-pc-bin xorriso qemu-system-x86"
+	@echo "  Verify tools: make check-tools"
 
 # ============================================================================
 # PHONY TARGETS

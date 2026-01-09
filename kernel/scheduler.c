@@ -1,6 +1,12 @@
 /* SYNAPSE SO - Scheduler Implementation */
 /* Licensed under GPLv3 */
 
+/* SMP/Multicore Note:
+ * This scheduler uses interrupt disable (cli) for process_list synchronization,
+ * which is correct for single-core x86 systems. For SMP/multicore support,
+ * spinlocks or proper atomic primitives would be needed instead of/cli.
+ * Current assumption: Uniprocessor system. */
+
 #include <kernel/scheduler.h>
 #include <kernel/process.h>
 #include <kernel/vga.h>
@@ -73,6 +79,12 @@ void scheduler_remove_process(process_t* proc) {
 
 /* Schedule next process (called by timer interrupt) */
 registers_t* scheduler_tick(registers_t* regs) {
+    /* Disable interrupts to protect process_list access.
+       Called from IRQ context but process_list can be modified from
+       other contexts (e.g., process_destroy, process_create). */
+    unsigned int flags;
+    asm volatile("pushf; pop %0; cli" : "=r"(flags) :: "memory");
+
     process_t* current = process_get_current();
 
     /* If the recorded current process is not runnable (e.g. blocked/stopped),
@@ -84,7 +96,12 @@ registers_t* scheduler_tick(registers_t* regs) {
         current = 0;
     }
 
+    if (current == 0) {
         if (process_list == 0) {
+            /* Restore interrupts before returning */
+            if (flags & (1 << 9)) {
+                asm volatile("sti");
+            }
             return regs;
         }
 
@@ -92,6 +109,11 @@ registers_t* scheduler_tick(registers_t* regs) {
         process_list->state = PROC_STATE_RUNNING;
         process_list->quantum = quantum;
         current = process_list;
+    }
+
+    /* Restore interrupts for context switch operations */
+    if (flags & (1 << 9)) {
+        asm volatile("sti");
     }
 
     /* Save the current interrupt frame pointer as the process context */
