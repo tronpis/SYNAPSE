@@ -277,10 +277,11 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
                 }
 
                 /* Get physical address of destination (process space) */
+                vmm_switch_page_directory(proc->page_dir);
                 uint32_t dest_phys = vmm_get_phys_addr(dest_page);
+                vmm_switch_page_directory(old_dir);
                 if (dest_phys == 0) {
                     vga_print("[-] Failed to get physical address of destination\n");
-                    vmm_switch_page_directory(old_dir);
                     return -1;
                 }
 
