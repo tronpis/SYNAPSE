@@ -27,6 +27,56 @@ typedef struct {
     /* ... more fields not used in minimal version ... */
 } __attribute__((packed)) multiboot_info_t;
 
+static void demo_syscalls(void) {
+    /* Demonstrate system calls in kernel thread */
+    vga_print("[DEMO] Testing syscalls...\n");
+
+    /* Test sys_getpid */
+    pid_t pid = sys_getpid();
+    vga_print("[DEMO] Current PID: ");
+    vga_print_dec(pid);
+    vga_print("\n");
+
+    /* Test sys_write */
+    char* msg = "Hello from syscall!";
+    vga_print("[DEMO] Writing via syscall: ");
+    int bytes_written = sys_write(1, (uint32_t)msg, 20);
+    vga_print_dec(bytes_written);
+    vga_print(" bytes\n");
+
+    /* Sleep for a while */
+    for (uint32_t i = 0; i < 50000000; i++) {
+        __asm__ __volatile__("nop");
+    }
+
+    /* Test sys_exit (this will terminate the process) */
+    vga_print("[DEMO] Calling sys_exit(0)...\n");
+    sys_exit(0);
+}
+
+static void shell_process(void) {
+    /* Simple interactive shell */
+    char buffer[256];
+    int pos = 0;
+
+    vga_print("[SHELL] SYNAPSE SO Shell v0.1\n");
+    vga_print("[SHELL] Type 'help' for commands\n");
+    vga_print("[SHELL] $ ");
+
+    while (1) {
+        /* Read character from keyboard (not implemented yet) */
+        /* For now, simulate simple commands */
+        vga_print("\n[SHELL] Commands: help, mem, procs, time, exit\n");
+        vga_print("[SHELL] $ ");
+
+        for (uint32_t i = 0; i < 100000000; i++) {
+            __asm__ __volatile__("nop");
+        }
+
+        break; /* Exit for now until keyboard input is implemented */
+    }
+}
+
 static void worker_a(void) {
     uint32_t last = 0;
 
@@ -137,6 +187,10 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     /* Demo kernel threads */
     process_create("worker_a", PROC_FLAG_KERNEL, worker_a);
     process_create("worker_b", PROC_FLAG_KERNEL, worker_b);
+
+    /* Demo system calls and shell (Phase 3) */
+    process_create("demo_syscalls", PROC_FLAG_KERNEL, demo_syscalls);
+    process_create("shell", PROC_FLAG_KERNEL, shell_process);
 
     /* Start PIT so scheduler_tick() runs from IRQ0 */
     timer_init(100);
