@@ -157,8 +157,11 @@ registers_t* isr_handler(registers_t *regs) {
 
     /* System call handler (int 0x80 = vector 128) */
     if (regs->int_no == 128) {
-        syscall_handler(regs);
-        return regs;
+        registers_t* new_regs = syscall_handler(regs);
+        if (new_regs == 0) {
+            return regs;
+        }
+        return new_regs;
     }
 
     return regs;
