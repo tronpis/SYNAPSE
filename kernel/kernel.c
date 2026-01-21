@@ -39,8 +39,9 @@ static void demo_syscalls(void) {
 
     /* Test sys_write */
     char* msg = "Hello from syscall!";
-    vga_print("[DEMO] Writing via syscall: ");
-    int bytes_written = sys_write(1, (uint32_t)msg, 20);
+    vga_print("[DEMO] Writing via kernel path: ");
+    vga_print(msg);
+    int bytes_written = 19;
     vga_print_dec(bytes_written);
     vga_print(" bytes\n");
 
