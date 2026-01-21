@@ -31,8 +31,11 @@ void syscall_init(void);
 /* Register a system call handler */
 void syscall_register(uint32_t num, syscall_func_t handler);
 
+/* Forward declaration for CPU register state (defined elsewhere) */
+struct registers;
+
 /* System call handler (called from assembly) */
-void syscall_handler(registers_t* regs);
+void syscall_handler(struct registers* regs);
 
 /* Individual system call implementations */
 int sys_exit(uint32_t exit_code);
@@ -45,14 +48,8 @@ int sys_exec(uint32_t path, uint32_t argv);
 int sys_wait(uint32_t pid, uint32_t status);
 int sys_getpid(void);
 
-/* Helper to get syscall number from registers */
-static inline uint32_t syscall_get_num(registers_t* regs) {
-    return regs->eax;
-}
-
-/* Helper to set return value */
-static inline void syscall_set_return(registers_t* regs, uint32_t value) {
-    regs->eax = value;
-}
+/* Helper prototypes (definitions must be in a C file where `struct registers` is defined) */
+uint32_t syscall_get_num(struct registers* regs);
+void syscall_set_return(struct registers* regs, uint32_t value);
 
 #endif /* KERNEL_SYSCALL_H */
