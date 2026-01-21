@@ -9,7 +9,7 @@ Objetivos del Proyecto:
 - Documentar todo el sistema con diagramas y gráficos claros para facilitar contribuciones.
 
 Estado Actual:
-**Fase 1 COMPLETADA** - Boot mínimo y kernel inicial implementados.
+**Fase 1** ✅ COMPLETADA (Enero 2025) - Boot mínimo y kernel inicial.
 El kernel actual incluye:
 - Bootloader compatible con Multiboot (GRUB)
 - Implementación inicial del kernel en C y Assembly
@@ -18,6 +18,28 @@ El kernel actual incluye:
 - IDT (Interrupt Descriptor Table) con handlers básicos
 - Sistema de construcción con Makefile
 - Imagen ISO bootable
+
+**Fase 2** ✅ COMPLETADA CON MEJORAS (Enero 2025) - Gestión de memoria y scheduler.
+El kernel actual incluye:
+- Physical Memory Manager (PMM) con bitmap
+- Virtual Memory Manager (VMM) con paginación
+- Kernel Heap con kmalloc/kfree
+- Process Management con PCB completo
+- Scheduler Round-Robin con quantum
+- Timer Driver (PIT 8254) implementado y funcionando
+- ELF Loader mejorado con copia entre espacios de direcciones
+- Context Switching integrado y funcionando
+- 5 correcciones críticas aplicadas
+- Mejoras: mapeos temporales, validación completa, manejo de errores
+
+**Fase 3** 🟡 EN PROGRESO (Enero 2025) - POSIX userland, syscalls.
+El kernel actual incluye:
+- System Call Interface (int 0x80) implementada
+- syscall.c con routing y dispatch
+- Syscalls funcionales: exit, write, getpid
+- Syscalls stub: read, open, close, fork, exec, wait
+- Archivos: syscall.h, syscall.c, isr_syscall
+- Pendientes: fork/exec completos, modo usuario (ring 3), filesystem
 
 El repositorio contiene documentación completa, código fuente del kernel, y herramientas para construir y ejecutar el sistema operativo.
 
