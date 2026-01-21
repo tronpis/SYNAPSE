@@ -90,6 +90,14 @@ IRQ 13, 45
 IRQ 14, 46
 IRQ 15, 47
 
+; System call handler (int 0x80)
+global isr_syscall
+isr_syscall:
+    cli
+    push byte 0      ; dummy error code
+    push dword 128   ; syscall vector (0x80 = 128)
+    jmp isr_common_stub
+
 ; Default ISR for unhandled interrupts
 global isr_default
 isr_default:
@@ -99,6 +107,7 @@ isr_default:
     jmp isr_common_stub
 
 extern isr_handler
+extern syscall_handler
 
 isr_common_stub:
     ; Save general-purpose registers

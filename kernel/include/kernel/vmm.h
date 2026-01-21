@@ -65,4 +65,17 @@ static inline void vmm_flush_tlb(uint32_t addr) {
 /* Get current page directory */
 page_directory_t* vmm_get_current_directory(void);
 
+/* Temporary mapping area for Phase 3: copy data between address spaces */
+#define TEMP_MAPPING_BASE 0xE0000000  /* Temporary mapping region at 3.5GB */
+#define TEMP_MAPPING_PAGES 256          /* 256 pages = 1MB */
+
+/* Map a physical frame to a temporary virtual address */
+uint32_t vmm_map_temp_page(uint32_t phys_addr);
+
+/* Unmap a temporary page */
+void vmm_unmap_temp_page(uint32_t virt_addr);
+
+/* Get current CR3 (physical address of page directory) */
+uint32_t vmm_get_cr3(void);
+
 #endif /* KERNEL_VMM_H */

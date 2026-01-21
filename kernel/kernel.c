@@ -11,6 +11,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/timer.h>
 #include <kernel/elf.h>
+#include <kernel/syscall.h>
 
 /* Multiboot information structure */
 typedef struct {
@@ -139,6 +140,11 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
 
     /* Start PIT so scheduler_tick() runs from IRQ0 */
     timer_init(100);
+
+    /* Phase 3: System Call Interface */
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_print("\n=== PHASE 3: System Call Interface ===\n");
+    syscall_init();
 
     /* Memory information */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);

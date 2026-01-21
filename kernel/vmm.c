@@ -246,3 +246,36 @@ void vmm_page_fault_handler(uint32_t error_code) {
 page_directory_t* vmm_get_current_directory(void) {
     return current_directory;
 }
+
+/* Get current CR3 value (physical address of page directory) */
+uint32_t vmm_get_cr3(void) {
+    uint32_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    return cr3;
+}
+
+/* Map a physical frame to a temporary virtual address (for Phase 3 ELF copy) */
+uint32_t vmm_map_temp_page(uint32_t phys_addr) {
+    /* Use temporary mapping region starting at TEMP_MAPPING_BASE */
+    static uint32_t temp_offset = 0;
+
+    /* Calculate virtual address */
+    uint32_t virt_addr = TEMP_MAPPING_BASE + (temp_offset * PAGE_SIZE);
+
+    /* Advance offset (circular buffer) */
+    temp_offset = (temp_offset + 1) % TEMP_MAPPING_PAGES;
+
+    /* Map the page with kernel permissions */
+    vmm_map_page(virt_addr, phys_addr, PAGE_PRESENT | PAGE_WRITE);
+
+    return virt_addr;
+}
+
+/* Unmap a temporary page */
+void vmm_unmap_temp_page(uint32_t virt_addr) {
+    /* Check if address is in temporary mapping region */
+    if (virt_addr >= TEMP_MAPPING_BASE &&
+        virt_addr < TEMP_MAPPING_BASE + (TEMP_MAPPING_PAGES * PAGE_SIZE)) {
+        vmm_unmap_page(virt_addr);
+    }
+}

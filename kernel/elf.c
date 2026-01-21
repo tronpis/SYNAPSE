@@ -245,8 +245,8 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
     }
 
     /* Second pass: Copy data from kernel space to process space */
-    /* Switch to kernel directory to access ELF data */
-    vmm_switch_page_directory(old_dir);
+    /* Stay in kernel directory for access to ELF data */
+    /* Use temporary mappings to copy to process space */
 
     phdr = (elf32_phdr_t*)(elf_data + header->e_phoff);
 
@@ -256,29 +256,90 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
             vga_print_hex(phdr->p_vaddr);
             vga_print("\n");
 
-            /* Copy segment data using temporary mapping */
-            uint8_t* dest = (uint8_t*)phdr->p_vaddr;
-            uint8_t* src = elf_data + phdr->p_offset;
+            uint32_t src_offset = phdr->p_offset;
+            uint32_t dest_addr = phdr->p_vaddr;
+            uint32_t copy_size = phdr->p_filesz;
 
-            /* Switch to process directory for destination */
-            vmm_switch_page_directory(proc->page_dir);
+            /* Copy file data page by page using temporary mappings */
+            while (copy_size > 0) {
+                /* Calculate page-aligned addresses */
+                uint32_t src_page = (uint32_t)(elf_data + src_offset) & 0xFFFFF000;
+                uint32_t src_off = src_offset & 0xFFF;
+                uint32_t dest_page = dest_addr & 0xFFFFF000;
+                uint32_t dest_off = dest_addr & 0xFFF;
 
-            /* Copy file data */
-            if (phdr->p_filesz > 0) {
-                /* This won't work properly - src is in kernel space, dest in process space */
-                /* We need to map kernel pages into process space temporarily */
-                /* For now, we'll skip the copy - this is a known limitation */
-                /* TODO: Implement temporary mapping of ELF data into process space */
-                vga_print("    [!] Skipping copy (requires temp mapping)\n");
+                /* Get physical address of source (kernel space) */
+                uint32_t src_phys = vmm_get_phys_addr(src_page);
+                if (src_phys == 0) {
+                    vga_print("[-] Failed to get physical address of source\n");
+                    vmm_switch_page_directory(old_dir);
+                    return -1;
+                }
+
+                /* Get physical address of destination (process space) */
+                uint32_t dest_phys = vmm_get_phys_addr(dest_page);
+                if (dest_phys == 0) {
+                    vga_print("[-] Failed to get physical address of destination\n");
+                    vmm_switch_page_directory(old_dir);
+                    return -1;
+                }
+
+                /* Map destination page temporarily in kernel space */
+                uint32_t temp_dest = vmm_map_temp_page(dest_phys);
+
+                /* Copy data */
+                uint32_t bytes_to_copy = PAGE_SIZE - src_off;
+                if (bytes_to_copy > PAGE_SIZE - dest_off) {
+                    bytes_to_copy = PAGE_SIZE - dest_off;
+                }
+                if (bytes_to_copy > copy_size) {
+                    bytes_to_copy = copy_size;
+                }
+
+                uint8_t* src_ptr = (uint8_t*)(src_page + src_off);
+                uint8_t* dest_ptr = (uint8_t*)(temp_dest + dest_off);
+
+                for (uint32_t j = 0; j < bytes_to_copy; j++) {
+                    dest_ptr[j] = src_ptr[j];
+                }
+
+                /* Unmap temporary page */
+                vmm_unmap_temp_page(temp_dest);
+
+                /* Advance */
+                src_offset += bytes_to_copy;
+                dest_addr += bytes_to_copy;
+                copy_size -= bytes_to_copy;
             }
 
-            /* Zero out bss */
+            /* Zero out bss (in process space) */
             if (phdr->p_memsz > phdr->p_filesz) {
-                memset(dest + phdr->p_filesz, 0, phdr->p_memsz - phdr->p_filesz);
-            }
+                uint32_t bss_start = phdr->p_vaddr + phdr->p_filesz;
+                uint32_t bss_size = phdr->p_memsz - phdr->p_filesz;
+                uint32_t bss_end = bss_start + bss_size;
 
-            /* Switch back to kernel directory for next iteration */
-            vmm_switch_page_directory(old_dir);
+                /* Zero BSS page by page */
+                for (uint32_t addr = bss_start; addr < bss_end; addr += PAGE_SIZE) {
+                    uint32_t page = addr & 0xFFFFF000;
+                    uint32_t phys = vmm_get_phys_addr(page);
+                    if (phys == 0) {
+                        vga_print("[-] Failed to get BSS page physical address\n");
+                        vmm_switch_page_directory(old_dir);
+                        return -1;
+                    }
+
+                    uint32_t temp = vmm_map_temp_page(phys);
+                    uint32_t zero_start = (addr == bss_start) ? (addr & 0xFFF) : 0;
+                    uint32_t zero_end = (addr + PAGE_SIZE > bss_end) ? (bss_end & 0xFFF) : PAGE_SIZE;
+
+                    uint8_t* ptr = (uint8_t*)(temp + zero_start);
+                    for (uint32_t j = zero_start; j < zero_end; j++) {
+                        ptr[j] = 0;
+                    }
+
+                    vmm_unmap_temp_page(temp);
+                }
+            }
         }
 
         phdr++;
@@ -287,7 +348,7 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
     /* Set process entry point */
     proc->eip = header->e_entry;
 
-    vga_print("[+] ELF mapped for process (copy TODO)\n");
+    vga_print("[+] ELF loaded into process address space successfully\n");
 
     /* Ensure we're back in kernel directory */
     vmm_switch_page_directory(old_dir);

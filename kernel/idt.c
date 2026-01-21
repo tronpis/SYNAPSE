@@ -8,6 +8,7 @@
 #include <kernel/vmm.h>
 #include <kernel/scheduler.h>
 #include <kernel/timer.h>
+#include <kernel/syscall.h>
 
 /* IDT entry structure (for 32-bit) */
 typedef struct {
@@ -154,6 +155,12 @@ registers_t* isr_handler(registers_t *regs) {
         return new_regs;
     }
 
+    /* System call handler (int 0x80 = vector 128) */
+    if (regs->int_no == 128) {
+        syscall_handler(regs);
+        return regs;
+    }
+
     return regs;
 }
 
@@ -231,6 +238,10 @@ void idt_init(void) {
     idt_set_gate(45, (unsigned int)irq13, GDT_KERNEL_CODE, 0x8E);
     idt_set_gate(46, (unsigned int)irq14, GDT_KERNEL_CODE, 0x8E);
     idt_set_gate(47, (unsigned int)irq15, GDT_KERNEL_CODE, 0x8E);
+
+    /* Set up system call handler (int 0x80 = vector 128) */
+    idt_set_gate(128, (unsigned int)isr_syscall, GDT_KERNEL_CODE, 0xEE);
+    /* Note: 0xEE = DPL=3 (user-callable), Present */
 
     /* Load IDT */
     __asm__ __volatile__("lidt %0" : : "m"(idt_ptr));
