@@ -330,8 +330,12 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
                     }
 
                     uint32_t temp = vmm_map_temp_page(phys);
+                    if (temp == 0) {
+                        vga_print("[-] Failed to map temporary BSS page\n");
+                        return -1;
+                    }
                     uint32_t zero_start = (addr == bss_start) ? (addr & 0xFFF) : 0;
-                    uint32_t zero_end = (addr + PAGE_SIZE > bss_end) ? (bss_end & 0xFFF) : PAGE_SIZE;
+                    uint32_t zero_end = (addr + PAGE_SIZE > bss_end) ? (bss_end - addr) : PAGE_SIZE;
 
                     uint8_t* ptr = (uint8_t*)(temp + zero_start);
                     for (uint32_t j = zero_start; j < zero_end; j++) {
