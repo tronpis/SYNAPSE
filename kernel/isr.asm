@@ -90,6 +90,46 @@ IRQ 13, 45
 IRQ 14, 46
 IRQ 15, 47
 
+; System call handler (int 0x80) - dedicated stub that calls syscall_handler
+global isr_syscall
+isr_syscall:
+    cli
+    push byte 0                      ; dummy error code (4 bytes pushed)
+    push dword 0x80                  ; syscall vector (0x80 = 128)
+    ; Save general-purpose registers (mirror isr_common_stub)
+    pusha
+    ; Save segment registers
+    push ds
+    push es
+    push fs
+    push gs
+    mov ax, GDT_KERNEL_DATA
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    ; Call C syscall handler
+    mov eax, esp
+    push eax                         ; push pointer to registers_t
+    call syscall_handler
+    add esp, 4                       ; clean up argument
+    ; Allow syscall handler to switch contexts (return new regs pointer in EAX)
+    test eax, eax
+    jz .no_context_switch_sys
+    mov esp, eax
+.no_context_switch_sys:
+    ; Restore segment registers
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    ; Restore general-purpose registers
+    popa
+    ; Clean up dummy error code and vector
+    add esp, 8
+    ; Return to caller (iret)
+    iret
+
 ; Default ISR for unhandled interrupts
 global isr_default
 isr_default:
@@ -99,6 +139,7 @@ isr_default:
     jmp isr_common_stub
 
 extern isr_handler
+extern syscall_handler
 
 isr_common_stub:
     ; Save general-purpose registers
