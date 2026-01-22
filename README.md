@@ -32,14 +32,19 @@ El kernel actual incluye:
 - 5 correcciones críticas aplicadas
 - Mejoras: mapeos temporales, validación completa, manejo de errores
 
-**Fase 3** 🟡 EN PROGRESO (Enero 2025) - POSIX userland, syscalls.
+**Fase 3** ✅ COMPLETADA (Enero 2025) - User Mode & System Calls
 El kernel actual incluye:
-- System Call Interface (int 0x80) implementada
-- syscall.c con routing y dispatch
+- User Mode (ring 3) implementado completamente
+- Transición kernel → user mode con enter_usermode()
+- Proceso de usuario de prueba funcional
+- System Call Interface (int 0x80) desde user mode
+- Syscalls seguros con validación de punteros
 - Syscalls funcionales: exit, write, getpid
+- Separación de privilegios (ring 0 vs ring 3)
+- Protección de memoria con PAGE_USER
+- Integración completa con el scheduler
 - Syscalls stub: read, open, close, fork, exec, wait
-- Archivos: syscall.h, syscall.c, isr_syscall
-- Pendientes: fork/exec completos, modo usuario (ring 3), filesystem
+- Pendientes: fork/exec completos, filesystem, IPC
 
 El repositorio contiene documentación completa, código fuente del kernel, y herramientas para construir y ejecutar el sistema operativo.
 
@@ -125,10 +130,11 @@ El proyecto prioriza la seguridad. Se utilizan herramientas automáticas para de
 Roadmap Inicial:
 - ✅ Fase 0: Documentación base, licencia y estructura del repositorio.
 - ✅ Fase 1: Boot mínimo y kernel inicial.
-- 🔄 Fase 2: Gestión de memoria, scheduler básico y soporte ELF.
-- ⬜ Fase 3: Userland compatible con estándares POSIX.
-- ⬜ Fase 4: Optimización para videojuegos y gráficos modernos.
-- ⬜ Fase 5: Hardening de seguridad, perfiles para servidor y desktop.
+- ✅ Fase 2: Gestión de memoria, scheduler básico y soporte ELF.
+- ✅ Fase 3: User mode, system calls y separación de privilegios.
+- ⬜ Fase 4: File system, fork/exec y dynamic loading.
+- ⬜ Fase 5: Optimización para videojuegos y gráficos modernos.
+- ⬜ Fase 6: Hardening de seguridad, perfiles para servidor y desktop.
 
 Licencia:
 Este proyecto está licenciado bajo la GNU General Public License v3.0 (GPLv3). El uso, modificación y redistribución están permitidos bajo los términos de dicha licencia.

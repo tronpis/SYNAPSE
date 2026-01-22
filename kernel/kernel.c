@@ -12,6 +12,7 @@
 #include <kernel/timer.h>
 #include <kernel/elf.h>
 #include <kernel/syscall.h>
+#include <kernel/usermode.h>
 
 /* Multiboot information structure */
 typedef struct {
@@ -198,8 +199,19 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
 
     /* Phase 3: System Call Interface */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_print("\n=== PHASE 3: System Call Interface ===\n");
+    vga_print("\n=== PHASE 3: System Call Interface & User Mode ===\n");
     syscall_init();
+    
+    /* Create user mode test process */
+    vga_print("[+] Creating user mode test process...\n");
+    uint32_t user_pid = create_user_test_process();
+    if (user_pid > 0) {
+        vga_print("    User process created with PID: ");
+        vga_print_dec(user_pid);
+        vga_print("\n");
+    } else {
+        vga_print("[-] Failed to create user process\n");
+    }
 
     /* Memory information */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
@@ -218,8 +230,8 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
 
     /* Kernel ready */
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("\n[SUCCESS] Phase 2 initialized successfully!\n");
-    vga_print("SYNAPSE SO is ready.\n");
+    vga_print("\n[SUCCESS] Phase 3 initialized successfully!\n");
+    vga_print("SYNAPSE SO is ready with user mode support.\n");
 
     /* Start scheduler */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
