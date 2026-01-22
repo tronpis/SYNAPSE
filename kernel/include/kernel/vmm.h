@@ -45,6 +45,9 @@ void vmm_map_page(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags);
 /* Unmap a virtual page */
 void vmm_unmap_page(uint32_t virt_addr);
 
+/* Unmap a virtual page without freeing the physical frame */
+void vmm_unmap_page_no_free(uint32_t virt_addr);
+
 /* Get physical address of a virtual page */
 uint32_t vmm_get_phys_addr(uint32_t virt_addr);
 
