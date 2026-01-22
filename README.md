@@ -9,37 +9,48 @@ Objetivos del Proyecto:
 - Documentar todo el sistema con diagramas y gráficos claros para facilitar contribuciones.
 
 Estado Actual:
-**Fase 1** ✅ COMPLETADA (Enero 2025) - Boot mínimo y kernel inicial.
+**Fase 1** ✅ COMPLETADA CON MEJORAS (Enero 2025) - Boot mínimo y kernel inicial.
 El kernel actual incluye:
 - Bootloader compatible con Multiboot (GRUB)
 - Implementación inicial del kernel en C y Assembly
+- CPU Detection completo (CPUID, features, vendor)
+- Early Boot Diagnostics (verificación de requisitos)
+- Habilitación automática de características CPU (SSE, global pages)
 - Driver VGA para modo texto
 - GDT (Global Descriptor Table) configurado
 - IDT (Interrupt Descriptor Table) con handlers básicos
-- Sistema de construcción con Makefile
+- Sistema de construcción con Makefile y Docker
 - Imagen ISO bootable
+- Mensajes de boot profesionales y diagnósticos
 
-**Fase 2** ✅ COMPLETADA CON MEJORAS (Enero 2025) - Gestión de memoria y scheduler.
+**Fase 2** ✅ COMPLETADA CON MEJORAS AVANZADAS (Enero 2025) - Gestión de memoria y scheduler.
 El kernel actual incluye:
-- Physical Memory Manager (PMM) con bitmap
-- Virtual Memory Manager (VMM) con paginación
+- Physical Memory Manager (PMM) con bitmap y reference counting (API)
+- Virtual Memory Manager (VMM) con paginación y Copy-on-Write (API)
 - Kernel Heap con kmalloc/kfree
-- Process Management con PCB completo
-- Scheduler Round-Robin con quantum
+- Process Management con PCB completo y prioridades
+- Scheduler Round-Robin con quantum y soporte de prioridades
 - Timer Driver (PIT 8254) implementado y funcionando
 - ELF Loader mejorado con copia entre espacios de direcciones
 - Context Switching integrado y funcionando
+- System Information (sysinfo) con estadísticas completas
 - 5 correcciones críticas aplicadas
 - Mejoras: mapeos temporales, validación completa, manejo de errores
+- APIs avanzadas: COW, refcount, priority scheduling, statistics
 
-**Fase 3** 🟡 EN PROGRESO (Enero 2025) - POSIX userland, syscalls.
+**Fase 3** ✅ COMPLETADA (Enero 2025) - User Mode & System Calls
 El kernel actual incluye:
-- System Call Interface (int 0x80) implementada
-- syscall.c con routing y dispatch
+- User Mode (ring 3) implementado completamente
+- Transición kernel → user mode con enter_usermode()
+- Proceso de usuario de prueba funcional
+- System Call Interface (int 0x80) desde user mode
+- Syscalls seguros con validación de punteros
 - Syscalls funcionales: exit, write, getpid
+- Separación de privilegios (ring 0 vs ring 3)
+- Protección de memoria con PAGE_USER
+- Integración completa con el scheduler
 - Syscalls stub: read, open, close, fork, exec, wait
-- Archivos: syscall.h, syscall.c, isr_syscall
-- Pendientes: fork/exec completos, modo usuario (ring 3), filesystem
+- Pendientes: fork/exec completos, filesystem, IPC
 
 El repositorio contiene documentación completa, código fuente del kernel, y herramientas para construir y ejecutar el sistema operativo.
 
@@ -125,10 +136,11 @@ El proyecto prioriza la seguridad. Se utilizan herramientas automáticas para de
 Roadmap Inicial:
 - ✅ Fase 0: Documentación base, licencia y estructura del repositorio.
 - ✅ Fase 1: Boot mínimo y kernel inicial.
-- 🔄 Fase 2: Gestión de memoria, scheduler básico y soporte ELF.
-- ⬜ Fase 3: Userland compatible con estándares POSIX.
-- ⬜ Fase 4: Optimización para videojuegos y gráficos modernos.
-- ⬜ Fase 5: Hardening de seguridad, perfiles para servidor y desktop.
+- ✅ Fase 2: Gestión de memoria, scheduler básico y soporte ELF.
+- ✅ Fase 3: User mode, system calls y separación de privilegios.
+- ⬜ Fase 4: File system, fork/exec y dynamic loading.
+- ⬜ Fase 5: Optimización para videojuegos y gráficos modernos.
+- ⬜ Fase 6: Hardening de seguridad, perfiles para servidor y desktop.
 
 Licencia:
 Este proyecto está licenciado bajo la GNU General Public License v3.0 (GPLv3). El uso, modificación y redistribución están permitidos bajo los términos de dicha licencia.

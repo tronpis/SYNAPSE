@@ -6,6 +6,7 @@
 #include <kernel/process.h>
 #include <kernel/idt.h>
 #include <kernel/string.h>
+#include <kernel/vmm.h>
 
 /* System call table */
 static syscall_func_t syscall_table[NUM_SYSCALLS];
@@ -90,14 +91,73 @@ int sys_exit(uint32_t exit_code) {
 int sys_write(uint32_t fd, uint32_t buffer, uint32_t count) {
     (void)fd; /* File descriptor not used yet */
 
-    /* Simple implementation: write to VGA */
-    char* buf = (char*)buffer;
-
-    for (uint32_t i = 0; i < count; i++) {
-        vga_put_char(buf[i]);
+    /* Validate count */
+    if (count == 0) {
+        return 0;
+    }
+    
+    /* Reject kernel-space pointers to avoid leaking kernel memory */
+    if (buffer >= 0xC0000000) {
+        return -1;
     }
 
-    return (int)count;
+    if (count > 4096) {
+        count = 4096;
+    }
+
+    /* Access user buffer safely using temporary mappings */
+    uint32_t bytes_written = 0;
+    uint32_t user_addr = buffer;
+    
+    while (bytes_written < count) {
+        /* Get physical address of user page */
+        uint32_t user_page = user_addr & 0xFFFFF000;
+        uint32_t page_offset = user_addr & 0xFFF;
+        
+        /* Get physical address (this validates the page is mapped) */
+        uint32_t phys_addr = vmm_get_phys_addr(user_page);
+        if (phys_addr == 0) {
+            /* Page not mapped - invalid pointer */
+            return bytes_written > 0 ? (int)bytes_written : -1;
+        }
+        
+        /* Allocate temporary mapping slot */
+        int slot = vmm_alloc_temp_slot();
+        if (slot < 0) {
+            /* No temporary slots available */
+            return bytes_written > 0 ? (int)bytes_written : -1;
+        }
+        
+        /* Map user page temporarily to kernel space */
+        uint32_t temp_virt = vmm_map_temp_page(phys_addr, slot);
+        if (temp_virt == 0) {
+            vmm_free_temp_slot(slot);
+            return bytes_written > 0 ? (int)bytes_written : -1;
+        }
+        
+        /* Calculate how many bytes we can read from this page */
+        uint32_t bytes_in_page = PAGE_SIZE - page_offset;
+        uint32_t bytes_to_write = count - bytes_written;
+        if (bytes_to_write > bytes_in_page) {
+            bytes_to_write = bytes_in_page;
+        }
+        
+        /* Write characters from mapped page */
+        char* mapped_buf = (char*)(temp_virt + page_offset);
+        for (uint32_t i = 0; i < bytes_to_write; i++) {
+            vga_put_char(mapped_buf[i]);
+        }
+        
+        /* Cleanup temporary mapping */
+        vmm_unmap_temp_page(slot);
+        vmm_free_temp_slot(slot);
+        
+        /* Advance to next page */
+        bytes_written += bytes_to_write;
+        user_addr += bytes_to_write;
+    }
+
+    return (int)bytes_written;
 }
 
 /* Read from a file descriptor */

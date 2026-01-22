@@ -56,4 +56,25 @@ void pmm_init_kernel_heap(uint32_t start, uint32_t size);
 void* pmm_kmalloc(uint32_t size);
 void pmm_kfree(void* ptr, uint32_t size);
 
+/* Reference counting for COW support */
+/* Increment reference count for a frame */
+void pmm_ref_frame(uint32_t frame_addr);
+
+/* Decrement reference count for a frame, free if reaches 0 */
+void pmm_unref_frame(uint32_t frame_addr);
+
+/* Get reference count for a frame */
+uint32_t pmm_get_ref_count(uint32_t frame_addr);
+
+/* PMM statistics */
+typedef struct {
+    uint32_t total_frames;
+    uint32_t used_frames;
+    uint32_t free_frames;
+    uint32_t shared_frames;  /* Frames with refcount > 1 */
+} pmm_stats_t;
+
+/* Get PMM statistics */
+void pmm_get_stats(pmm_stats_t* stats);
+
 #endif /* KERNEL_PMM_H */

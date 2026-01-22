@@ -46,7 +46,35 @@ Antes de crear un issue:
    ```bash
    git commit -m "Tipo: descripción breve del cambio"
    ```
-   Tipos permitidos: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+   
+   **Tipos de Commit (Conventional Commits):**
+   - `feat`: Nueva funcionalidad
+   - `fix`: Corrección de bug
+   - `docs`: Solo cambios en documentación
+   - `style`: Formato, espacios, etc (no afecta código)
+   - `refactor`: Refactorización (sin cambio de funcionalidad)
+   - `test`: Agregar o modificar tests
+   - `chore`: Tareas de mantenimiento, build, etc
+   - `perf`: Mejoras de rendimiento
+   - `security`: Correcciones de seguridad
+   
+   **Ejemplos de buenos commits:**
+   ```
+   feat: add temporary page mapping system
+   fix: prevent double free in vmm_unmap_temp_page
+   docs: add memory map documentation
+   refactor: simplify PMM allocation algorithm
+   test: add heap allocation stress test
+   security: validate user pointers in sys_write
+   ```
+   
+   **Ejemplos de malos commits (evitar):**
+   ```
+   fix          ← Muy vago
+   update       ← Qué se actualizó?
+   changes      ← Qué cambios?
+   wip          ← No commitear work-in-progress
+   ```
 
 6. **Push a tu fork**:
    ```bash

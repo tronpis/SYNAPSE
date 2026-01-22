@@ -149,6 +149,19 @@ void vmm_unmap_page(uint32_t virt_addr) {
     }
 }
 
+/* Unmap a virtual page without freeing the physical frame */
+void vmm_unmap_page_no_free(uint32_t virt_addr) {
+    uint32_t* pte = get_pte(current_directory, virt_addr);
+
+    if (pte && (*pte & PAGE_PRESENT)) {
+        /* Clear the entry but DON'T free the frame */
+        *pte = 0;
+
+        /* Flush TLB */
+        vmm_flush_tlb(virt_addr);
+    }
+}
+
 /* Get physical address of a virtual page */
 uint32_t vmm_get_phys_addr(uint32_t virt_addr) {
     uint32_t* pte = get_pte(current_directory, virt_addr);
@@ -254,28 +267,69 @@ uint32_t vmm_get_cr3(void) {
     return cr3;
 }
 
-/* Map a physical frame to a temporary virtual address (for Phase 3 ELF copy) */
-uint32_t vmm_map_temp_page(uint32_t phys_addr) {
-    /* Use temporary mapping region starting at TEMP_MAPPING_BASE */
-    static uint32_t temp_offset = 0;
+/* Temporary mapping slot bitmap */
+static uint32_t temp_slots_bitmap[(TEMP_MAPPING_PAGES + 31) / 32];
 
+/* Allocate a temporary mapping slot */
+int vmm_alloc_temp_slot(void) {
+    /* Find a free slot */
+    for (uint32_t i = 0; i < TEMP_MAPPING_PAGES; i++) {
+        uint32_t bitmap_idx = i / 32;
+        uint32_t bit_idx = i % 32;
+        
+        if (!(temp_slots_bitmap[bitmap_idx] & (1 << bit_idx))) {
+            /* Mark slot as used */
+            temp_slots_bitmap[bitmap_idx] |= (1 << bit_idx);
+            return (int)i;
+        }
+    }
+    
+    /* No free slots */
+    return -1;
+}
+
+/* Free a temporary mapping slot */
+void vmm_free_temp_slot(int slot) {
+    if (slot < 0 || slot >= (int)TEMP_MAPPING_PAGES) {
+        return;
+    }
+    
+    uint32_t bitmap_idx = slot / 32;
+    uint32_t bit_idx = slot % 32;
+    
+    /* Mark slot as free */
+    temp_slots_bitmap[bitmap_idx] &= ~(1 << bit_idx);
+}
+
+/* Map a physical frame to a temporary virtual address using a specific slot */
+uint32_t vmm_map_temp_page(uint32_t phys_addr, int slot) {
+    if (slot < 0 || slot >= (int)TEMP_MAPPING_PAGES) {
+        return 0;
+    }
+    
     /* Calculate virtual address */
-    uint32_t virt_addr = TEMP_MAPPING_BASE + (temp_offset * PAGE_SIZE);
-
-    /* Advance offset (circular buffer) */
-    temp_offset = (temp_offset + 1) % TEMP_MAPPING_PAGES;
-
-    /* Map the page with kernel permissions */
+    uint32_t virt_addr = TEMP_MAPPING_BASE + (slot * PAGE_SIZE);
+    
+    /* Map the page with kernel-only permissions in the currently active directory
+     * This works because:
+     * 1. Syscalls execute in kernel mode even with process CR3
+     * 2. The mapping is kernel-only (no PAGE_USER), so user mode can't access it
+     * 3. The mapping only needs to exist during this syscall
+     */
     vmm_map_page(virt_addr, phys_addr, PAGE_PRESENT | PAGE_WRITE);
-
+    
     return virt_addr;
 }
 
-/* Unmap a temporary page */
-void vmm_unmap_temp_page(uint32_t virt_addr) {
-    /* Check if address is in temporary mapping region */
-    if (virt_addr >= TEMP_MAPPING_BASE &&
-        virt_addr < TEMP_MAPPING_BASE + (TEMP_MAPPING_PAGES * PAGE_SIZE)) {
-        vmm_unmap_page(virt_addr);
+/* Unmap a temporary page for a specific slot */
+void vmm_unmap_temp_page(int slot) {
+    if (slot < 0 || slot >= (int)TEMP_MAPPING_PAGES) {
+        return;
     }
+    
+    /* Calculate virtual address */
+    uint32_t virt_addr = TEMP_MAPPING_BASE + (slot * PAGE_SIZE);
+    
+    /* Unmap without freeing the physical frame from the currently active directory */
+    vmm_unmap_page_no_free(virt_addr);
 }

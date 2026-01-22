@@ -12,6 +12,9 @@
 #include <kernel/timer.h>
 #include <kernel/elf.h>
 #include <kernel/syscall.h>
+#include <kernel/usermode.h>
+#include <kernel/cpu.h>
+#include <kernel/early.h>
 
 /* Multiboot information structure */
 typedef struct {
@@ -114,33 +117,46 @@ static void worker_b(void) {
     }
 }
 
+/* Global variables for early checks */
+void* multiboot_info_ptr = 0;
+uint32_t multiboot_magic = 0;
+
 /* Kernel main function - entry point from bootloader */
 void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
+    /* Save for early diagnostics */
+    multiboot_magic = magic;
+    multiboot_info_ptr = mbi;
+    
     /* Clear screen */
     vga_clear_screen();
 
     /* Print kernel banner */
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("SYNAPSE SO - Open Source Operating System\n");
-    vga_print("=========================================\n\n");
+    vga_print("SYNAPSE SO - Open Source Operating System v0.3.0\n");
+    vga_print("=================================================\n\n");
 
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_print("Initializing Kernel...\n");
-
-    /* Check multiboot magic */
+    vga_print("Phase 1: Boot and Initialization\n");
+    vga_print("=================================================\n");
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    if (magic != 0x2BADB002) {
-        vga_print("[-] Error: Invalid Multiboot magic number!\n");
-        while (1) {
-            __asm__ __volatile__("hlt");
-        }
+    
+    /* Initialize CPU detection */
+    vga_print("[+] Detecting CPU...\n");
+    cpu_init();
+    cpu_print_info();
+    
+    /* Run early boot checks */
+    early_init();
+    int check_result = early_run_checks();
+    early_print_summary();
+    
+    if (check_result == BOOT_CHECK_FATAL) {
+        early_panic("Boot checks failed");
     }
-    vga_print("[+] Multiboot validated successfully\n");
-
-    /* Check if mbi is valid */
-    if (mbi == 0) {
-        vga_print("[-] Warning: Multiboot info pointer is null\n");
-    }
+    
+    /* Enable CPU features (SSE, etc) */
+    vga_print("[+] Enabling CPU features...\n");
+    cpu_enable_features();
 
     /* Initialize GDT */
     vga_print("[+] Initializing Global Descriptor Table...\n");
@@ -151,6 +167,11 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     vga_print("[+] Initializing Interrupt Descriptor Table...\n");
     idt_init();
     vga_print("    IDT loaded successfully\n");
+    
+    /* Phase 1 complete */
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_print("\n[SUCCESS] Phase 1 complete!\n");
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
 
     /* Keep interrupts disabled until Phase 2 initialization is complete. */
     __asm__ __volatile__("cli");
@@ -198,8 +219,19 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
 
     /* Phase 3: System Call Interface */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_print("\n=== PHASE 3: System Call Interface ===\n");
+    vga_print("\n=== PHASE 3: System Call Interface & User Mode ===\n");
     syscall_init();
+    
+    /* Create user mode test process */
+    vga_print("[+] Creating user mode test process...\n");
+    uint32_t user_pid = create_user_test_process();
+    if (user_pid > 0) {
+        vga_print("    User process created with PID: ");
+        vga_print_dec(user_pid);
+        vga_print("\n");
+    } else {
+        vga_print("[-] Failed to create user process\n");
+    }
 
     /* Memory information */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
@@ -218,8 +250,8 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
 
     /* Kernel ready */
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_print("\n[SUCCESS] Phase 2 initialized successfully!\n");
-    vga_print("SYNAPSE SO is ready.\n");
+    vga_print("\n[SUCCESS] Phase 3 initialized successfully!\n");
+    vga_print("SYNAPSE SO is ready with user mode support.\n");
 
     /* Start scheduler */
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);

@@ -18,6 +18,7 @@
 #define PAGE_ACCESSED   (1 << 5)
 #define PAGE_DIRTY      (1 << 6)
 #define PAGE_GLOBAL     (1 << 8)
+#define PAGE_COW        (1 << 9)  /* Copy-on-Write flag (custom, uses available bit) */
 #define PAGE_FRAME(addr) ((addr) & 0xFFFFF000)
 
 /* Page directory and table structures */
@@ -44,6 +45,9 @@ void vmm_map_page(uint32_t virt_addr, uint32_t phys_addr, uint32_t flags);
 
 /* Unmap a virtual page */
 void vmm_unmap_page(uint32_t virt_addr);
+
+/* Unmap a virtual page without freeing the physical frame */
+void vmm_unmap_page_no_free(uint32_t virt_addr);
 
 /* Get physical address of a virtual page */
 uint32_t vmm_get_phys_addr(uint32_t virt_addr);
@@ -83,5 +87,27 @@ void vmm_unmap_temp_page(int slot);
 
 /* Get current CR3 (physical address of page directory) */
 uint32_t vmm_get_cr3(void);
+
+/* Copy-on-Write (COW) support */
+/* Clone a page directory for fork() - marks pages as COW */
+page_directory_t* vmm_clone_page_directory(page_directory_t* src);
+
+/* Handle COW page fault - copies page on write */
+int vmm_handle_cow_fault(uint32_t fault_addr);
+
+/* Check if a page is marked as COW */
+int vmm_is_page_cow(uint32_t virt_addr);
+
+/* Memory statistics */
+typedef struct {
+    uint32_t total_pages;
+    uint32_t used_pages;
+    uint32_t free_pages;
+    uint32_t cow_pages;
+    uint32_t shared_pages;
+} vmm_stats_t;
+
+/* Get VMM statistics */
+void vmm_get_stats(vmm_stats_t* stats);
 
 #endif /* KERNEL_VMM_H */
