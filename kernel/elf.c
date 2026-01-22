@@ -285,8 +285,21 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
                     return -1;
                 }
 
-                /* Map destination page temporarily in kernel space */
-                uint32_t temp_dest = vmm_map_temp_page(dest_phys);
+                /* Allocate temporary slot and map destination page */
+                int slot = vmm_alloc_temp_slot();
+                if (slot < 0) {
+                    vga_print("[-] Failed to allocate temp slot\n");
+                    vmm_switch_page_directory(old_dir);
+                    return -1;
+                }
+                
+                uint32_t temp_dest = vmm_map_temp_page(dest_phys, slot);
+                if (temp_dest == 0) {
+                    vga_print("[-] Failed to map temp page\n");
+                    vmm_free_temp_slot(slot);
+                    vmm_switch_page_directory(old_dir);
+                    return -1;
+                }
 
                 /* Copy data */
                 uint32_t bytes_to_copy = PAGE_SIZE - src_off;
@@ -304,8 +317,9 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
                     dest_ptr[j] = src_ptr[j];
                 }
 
-                /* Unmap temporary page */
-                vmm_unmap_temp_page(temp_dest);
+                /* Unmap temporary page and free slot */
+                vmm_unmap_temp_page(slot);
+                vmm_free_temp_slot(slot);
 
                 /* Advance */
                 src_offset += bytes_to_copy;
@@ -329,11 +343,21 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
                         return -1;
                     }
 
-                    uint32_t temp = vmm_map_temp_page(phys);
-                    if (temp == 0) {
-                        vga_print("[-] Failed to map temporary BSS page\n");
+                    int bss_slot = vmm_alloc_temp_slot();
+                    if (bss_slot < 0) {
+                        vga_print("[-] Failed to allocate temp slot for BSS\n");
+                        vmm_switch_page_directory(old_dir);
                         return -1;
                     }
+                    
+                    uint32_t temp = vmm_map_temp_page(phys, bss_slot);
+                    if (temp == 0) {
+                        vga_print("[-] Failed to map temporary BSS page\n");
+                        vmm_free_temp_slot(bss_slot);
+                        vmm_switch_page_directory(old_dir);
+                        return -1;
+                    }
+                    
                     uint32_t zero_start = (addr == bss_start) ? (addr & 0xFFF) : 0;
                     uint32_t zero_end = (addr + PAGE_SIZE > bss_end) ? (bss_end - addr) : PAGE_SIZE;
 
@@ -342,7 +366,8 @@ int elf_load_to_process(uint8_t* elf_data, uint32_t size, process_t* proc) {
                         ptr[j] = 0;
                     }
 
-                    vmm_unmap_temp_page(temp);
+                    vmm_unmap_temp_page(bss_slot);
+                    vmm_free_temp_slot(bss_slot);
                 }
             }
         }

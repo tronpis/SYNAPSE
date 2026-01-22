@@ -310,17 +310,13 @@ uint32_t vmm_map_temp_page(uint32_t phys_addr, int slot) {
     /* Calculate virtual address */
     uint32_t virt_addr = TEMP_MAPPING_BASE + (slot * PAGE_SIZE);
     
-    /* Save current directory */
-    page_directory_t* old_dir = current_directory;
-    
-    /* Switch to kernel directory to ensure mapping goes to kernel space */
-    current_directory = kernel_directory;
-    
-    /* Map the page with kernel permissions */
+    /* Map the page with kernel-only permissions in the currently active directory
+     * This works because:
+     * 1. Syscalls execute in kernel mode even with process CR3
+     * 2. The mapping is kernel-only (no PAGE_USER), so user mode can't access it
+     * 3. The mapping only needs to exist during this syscall
+     */
     vmm_map_page(virt_addr, phys_addr, PAGE_PRESENT | PAGE_WRITE);
-    
-    /* Restore previous directory */
-    current_directory = old_dir;
     
     return virt_addr;
 }
@@ -334,15 +330,6 @@ void vmm_unmap_temp_page(int slot) {
     /* Calculate virtual address */
     uint32_t virt_addr = TEMP_MAPPING_BASE + (slot * PAGE_SIZE);
     
-    /* Save current directory */
-    page_directory_t* old_dir = current_directory;
-    
-    /* Switch to kernel directory */
-    current_directory = kernel_directory;
-    
-    /* Unmap without freeing the physical frame */
+    /* Unmap without freeing the physical frame from the currently active directory */
     vmm_unmap_page_no_free(virt_addr);
-    
-    /* Restore previous directory */
-    current_directory = old_dir;
 }

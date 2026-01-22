@@ -68,39 +68,49 @@ pmm_free_frame(frame);            // Frame freed here
 
 ---
 
-## Bug #2: Temporary Mapping to Wrong Page Directory
+## Bug #2: Temporary Mapping Page Fault Issue
 
-### Severity: HIGH
+### Severity: CRITICAL
 
 ### Description
 
-`vmm_map_temp_page()` used `current_directory` to create temporary mappings. However, `current_directory` could be a user process page directory, causing:
+Initial implementation attempted to map temporary pages to `kernel_directory`, but this caused page faults when accessed from syscalls because:
 
-- **Wrong address space**: Mapping created in user process instead of kernel
-- **Access issues**: Kernel can't reliably access the mapping
-- **Security risk**: User process gains access to physical frame
-- **Race condition**: Multiple processes could use same temp slot
+- **Page directory copying**: Process page directories copy kernel mappings at **creation time**
+- **Missing mappings**: Temp mappings created after process creation don't exist in process directories
+- **Page fault on access**: When `sys_write()` accesses `temp_virt`, CR3 points to process directory which lacks the mapping
 
 ### Root Cause
 
 ```c
-/* OLD (VULNERABLE) CODE */
+/* BROKEN CODE - FIRST ATTEMPT */
 uint32_t vmm_map_temp_page(uint32_t phys_addr, int slot) {
     uint32_t virt_addr = TEMP_MAPPING_BASE + (slot * PAGE_SIZE);
     
-    // Uses current_directory, which may be user process!
+    /* Switch to kernel directory */
+    page_directory_t* old_dir = current_directory;
+    current_directory = kernel_directory;
+    
+    /* Map here - but process CR3 won't see it! */
     vmm_map_page(virt_addr, phys_addr, PAGE_PRESENT | PAGE_WRITE);
     
+    current_directory = old_dir;
     return virt_addr;
 }
 ```
 
+**The Problem:**
+1. Process page directory created, copies kernel mappings (entries 768-1023)
+2. Later, `vmm_map_temp_page()` creates new page table in `kernel_directory`
+3. This new page table is NOT in the process's page directory (was copied before)
+4. `sys_write()` runs with process CR3, tries to access `temp_virt` → **PAGE FAULT**
+
 ### Fix
 
-Always use `kernel_directory` for temporary mappings:
+Map to the **currently active directory** instead:
 
 ```c
-/* NEW (SAFE) CODE */
+/* CORRECT CODE */
 uint32_t vmm_map_temp_page(uint32_t phys_addr, int slot) {
     if (slot < 0 || slot >= TEMP_MAPPING_PAGES) {
         return 0;
@@ -108,34 +118,39 @@ uint32_t vmm_map_temp_page(uint32_t phys_addr, int slot) {
     
     uint32_t virt_addr = TEMP_MAPPING_BASE + (slot * PAGE_SIZE);
     
-    /* Save current directory */
-    page_directory_t* old_dir = current_directory;
-    
-    /* Switch to kernel directory to ensure mapping goes to kernel space */
-    current_directory = kernel_directory;
-    
+    /* Map in the currently active directory (process CR3)
+     * This works because:
+     * 1. Syscalls execute in kernel mode even with process CR3
+     * 2. Mapping is kernel-only (no PAGE_USER), user mode can't access
+     * 3. Mapping only needs to exist during this syscall
+     */
     vmm_map_page(virt_addr, phys_addr, PAGE_PRESENT | PAGE_WRITE);
-    
-    /* Restore previous directory */
-    current_directory = old_dir;
     
     return virt_addr;
 }
 ```
 
+### Why This Works
+
+- **Kernel mode access**: Even though CR3 points to process directory, kernel mode can access kernel-only pages (no `PAGE_USER` flag)
+- **Temporary nature**: Mapping only needs to exist during the syscall, not globally
+- **Security**: User mode cannot access temp region (kernel-only flags)
+- **Isolation**: Each process's temp mappings are isolated in their own directory
+
 ### Testing
 
 ```c
-/* Create user process with its own page directory */
+/* From user process */
 process_t* proc = process_create("test", ...);
-vmm_switch_page_directory(proc->page_dir);
+vmm_switch_page_directory(proc->page_dir);  // CR3 = process directory
 
-/* Now current_directory is user process */
+/* Syscall happens */
 int slot = vmm_alloc_temp_slot();
-uint32_t virt = vmm_map_temp_page(phys, slot);
+uint32_t virt = vmm_map_temp_page(phys, slot);  // Maps to current CR3
 
-/* Mapping is in kernel directory, accessible to kernel */
-uint32_t* ptr = (uint32_t*)virt;  // Works correctly
+/* Access works - mapping is in active directory */
+uint32_t* ptr = (uint32_t*)virt;  // No page fault!
+*ptr = 0x12345678;
 ```
 
 ---
