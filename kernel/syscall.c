@@ -96,7 +96,11 @@ int sys_write(uint32_t fd, uint32_t buffer, uint32_t count) {
         return 0;
     }
     
-    /* Maximum write size to prevent excessive iterations */
+    /* Reject kernel-space pointers to avoid leaking kernel memory */
+    if (buffer >= 0xC0000000) {
+        return -1;
+    }
+
     if (count > 4096) {
         count = 4096;
     }
