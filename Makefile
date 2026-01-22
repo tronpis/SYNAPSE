@@ -68,6 +68,8 @@ KERNEL_C_FILES = $(KERNEL_DIR)/kernel.c \
     $(KERNEL_DIR)/vga.c \
     $(KERNEL_DIR)/gdt.c \
     $(KERNEL_DIR)/idt.c \
+    $(KERNEL_DIR)/cpu.c \
+    $(KERNEL_DIR)/early.c \
     $(KERNEL_DIR)/pmm.c \
     $(KERNEL_DIR)/pmm_refcount.c \
     $(KERNEL_DIR)/vmm.c \

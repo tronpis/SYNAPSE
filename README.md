@@ -9,15 +9,19 @@ Objetivos del Proyecto:
 - Documentar todo el sistema con diagramas y gráficos claros para facilitar contribuciones.
 
 Estado Actual:
-**Fase 1** ✅ COMPLETADA (Enero 2025) - Boot mínimo y kernel inicial.
+**Fase 1** ✅ COMPLETADA CON MEJORAS (Enero 2025) - Boot mínimo y kernel inicial.
 El kernel actual incluye:
 - Bootloader compatible con Multiboot (GRUB)
 - Implementación inicial del kernel en C y Assembly
+- CPU Detection completo (CPUID, features, vendor)
+- Early Boot Diagnostics (verificación de requisitos)
+- Habilitación automática de características CPU (SSE, global pages)
 - Driver VGA para modo texto
 - GDT (Global Descriptor Table) configurado
 - IDT (Interrupt Descriptor Table) con handlers básicos
-- Sistema de construcción con Makefile
+- Sistema de construcción con Makefile y Docker
 - Imagen ISO bootable
+- Mensajes de boot profesionales y diagnósticos
 
 **Fase 2** ✅ COMPLETADA CON MEJORAS AVANZADAS (Enero 2025) - Gestión de memoria y scheduler.
 El kernel actual incluye:
