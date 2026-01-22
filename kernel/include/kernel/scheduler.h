@@ -11,6 +11,14 @@
 /* Scheduler quantum (time slice) */
 #define DEFAULT_QUANTUM 10
 
+/* Process priorities */
+#define PRIORITY_IDLE       0   /* Idle process */
+#define PRIORITY_LOW        1   /* Low priority */
+#define PRIORITY_NORMAL     2   /* Normal priority (default) */
+#define PRIORITY_HIGH       3   /* High priority */
+#define PRIORITY_REALTIME   4   /* Real-time priority */
+#define PRIORITY_MAX        4   /* Maximum priority */
+
 /* Initialize scheduler */
 void scheduler_init(void);
 
@@ -43,5 +51,30 @@ void context_switch(process_t* old_proc, process_t* new_proc);
 
 /* Initialize context for new process */
 void context_init(process_t* proc, uint32_t entry_point);
+
+/* Priority-based scheduling */
+/* Set process priority */
+void scheduler_set_priority(process_t* proc, uint32_t priority);
+
+/* Get process priority */
+uint32_t scheduler_get_priority(process_t* proc);
+
+/* Boost priority temporarily (for I/O bound processes) */
+void scheduler_boost_priority(process_t* proc);
+
+/* Scheduler statistics */
+typedef struct {
+    uint32_t total_switches;
+    uint32_t idle_ticks;
+    uint32_t busy_ticks;
+    uint32_t processes_ready;
+    uint32_t processes_blocked;
+} scheduler_stats_t;
+
+/* Get scheduler statistics */
+void scheduler_get_stats(scheduler_stats_t* stats);
+
+/* Reset scheduler statistics */
+void scheduler_reset_stats(void);
 
 #endif /* KERNEL_SCHEDULER_H */

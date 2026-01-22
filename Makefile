@@ -69,14 +69,18 @@ KERNEL_C_FILES = $(KERNEL_DIR)/kernel.c \
     $(KERNEL_DIR)/gdt.c \
     $(KERNEL_DIR)/idt.c \
     $(KERNEL_DIR)/pmm.c \
+    $(KERNEL_DIR)/pmm_refcount.c \
     $(KERNEL_DIR)/vmm.c \
+    $(KERNEL_DIR)/vmm_cow.c \
     $(KERNEL_DIR)/heap.c \
     $(KERNEL_DIR)/process.c \
     $(KERNEL_DIR)/scheduler.c \
+    $(KERNEL_DIR)/scheduler_priority.c \
     $(KERNEL_DIR)/timer.c \
     $(KERNEL_DIR)/elf.c \
     $(KERNEL_DIR)/syscall.c \
-    $(KERNEL_DIR)/usermode.c
+    $(KERNEL_DIR)/usermode.c \
+    $(KERNEL_DIR)/sysinfo.c
 
 # Library C source files
 KERNEL_LIB_FILES = $(KERNEL_DIR)/lib/string.c

@@ -19,18 +19,20 @@ El kernel actual incluye:
 - Sistema de construcción con Makefile
 - Imagen ISO bootable
 
-**Fase 2** ✅ COMPLETADA CON MEJORAS (Enero 2025) - Gestión de memoria y scheduler.
+**Fase 2** ✅ COMPLETADA CON MEJORAS AVANZADAS (Enero 2025) - Gestión de memoria y scheduler.
 El kernel actual incluye:
-- Physical Memory Manager (PMM) con bitmap
-- Virtual Memory Manager (VMM) con paginación
+- Physical Memory Manager (PMM) con bitmap y reference counting (API)
+- Virtual Memory Manager (VMM) con paginación y Copy-on-Write (API)
 - Kernel Heap con kmalloc/kfree
-- Process Management con PCB completo
-- Scheduler Round-Robin con quantum
+- Process Management con PCB completo y prioridades
+- Scheduler Round-Robin con quantum y soporte de prioridades
 - Timer Driver (PIT 8254) implementado y funcionando
 - ELF Loader mejorado con copia entre espacios de direcciones
 - Context Switching integrado y funcionando
+- System Information (sysinfo) con estadísticas completas
 - 5 correcciones críticas aplicadas
 - Mejoras: mapeos temporales, validación completa, manejo de errores
+- APIs avanzadas: COW, refcount, priority scheduling, statistics
 
 **Fase 3** ✅ COMPLETADA (Enero 2025) - User Mode & System Calls
 El kernel actual incluye:
