@@ -116,7 +116,7 @@ process_t* process_create_current(const char* name) {
     proc->esi = proc->edi = 0;
 
     proc->exit_code = 0;
-    proc->priority = 10;
+    proc->priority = PRIORITY_HIGH;  /* Kernel processes get high priority */
     proc->quantum = 0;
 
     if (name != 0) {
@@ -152,7 +152,7 @@ process_t* process_create(const char* name, uint32_t flags,
     proc->flags = flags;
 
     proc->exit_code = 0;
-    proc->priority = 10;
+    proc->priority = PRIORITY_NORMAL;  /* Default priority */
     proc->quantum = 10;
 
     proc->heap_start = 0;

@@ -124,7 +124,7 @@ uint32_t create_user_test_process(void) {
         vga_print("[-] Failed to create process\n");
         return 0;
     }
-    
+
     /* Mark as user mode process */
     proc->flags = PROC_FLAG_USER;
     
@@ -219,6 +219,7 @@ uint32_t create_user_test_process(void) {
     proc->esp = user_stack_virt;  /* Stack grows down */
     proc->user_stack = user_stack_virt;
     proc->state = PROC_STATE_READY;
+    proc->priority = PRIORITY_NORMAL;  /* User processes get normal priority */
     
     vga_print("    Process created: PID ");
     vga_print_dec(proc->pid);

@@ -1,10 +1,11 @@
-/* SYNAPSE SO - PMM Reference Counting (Stub Implementation) */
+/* SYNAPSE SO - PMM Reference Counting Implementation */
 /* Licensed under GPLv3 */
 
 #include <kernel/pmm.h>
 #include <kernel/vga.h>
+#include <kernel/heap.h>
 
-/* Reference count table - stub for now */
+/* Reference count table */
 static uint16_t* frame_refcounts = 0;
 static uint32_t num_frames_total = 0;
 
@@ -12,12 +13,21 @@ static uint32_t num_frames_total = 0;
 void pmm_refcount_init(uint32_t total_frames) {
     num_frames_total = total_frames;
     
-    /* TODO: Allocate refcount table
-     * frame_refcounts = (uint16_t*)pmm_kmalloc(total_frames * sizeof(uint16_t));
-     * Initialize all to 0
-     */
+    /* Allocate refcount table using kernel heap */
+    frame_refcounts = (uint16_t*)kmalloc(total_frames * sizeof(uint16_t));
+    if (frame_refcounts == 0) {
+        vga_print("[-] Failed to allocate reference count table\n");
+        return;
+    }
     
-    vga_print("    Reference counting: STUB (not yet implemented)\n");
+    /* Initialize all reference counts to 0 */
+    for (uint32_t i = 0; i < total_frames; i++) {
+        frame_refcounts[i] = 0;
+    }
+    
+    vga_print("    Reference counting: Initialized for ");
+    vga_print_dec(total_frames);
+    vga_print(" frames\n");
 }
 
 /* Increment reference count */
@@ -31,11 +41,10 @@ void pmm_ref_frame(uint32_t frame_addr) {
         return;
     }
     
-    /* TODO: Implement
-     * if (frame_refcounts[frame_num] < 0xFFFF) {
-     *     frame_refcounts[frame_num]++;
-     * }
-     */
+    /* Increment reference count if not at maximum */
+    if (frame_refcounts[frame_num] < 0xFFFF) {
+        frame_refcounts[frame_num]++;
+    }
 }
 
 /* Decrement reference count, free if reaches 0 */
@@ -49,14 +58,15 @@ void pmm_unref_frame(uint32_t frame_addr) {
         return;
     }
     
-    /* TODO: Implement
-     * if (frame_refcounts[frame_num] > 0) {
-     *     frame_refcounts[frame_num]--;
-     *     if (frame_refcounts[frame_num] == 0) {
-     *         pmm_free_frame(frame_addr);
-     *     }
-     * }
-     */
+    /* Decrement reference count if greater than 0 */
+    if (frame_refcounts[frame_num] > 0) {
+        frame_refcounts[frame_num]--;
+        
+        /* Free frame if reference count reaches 0 */
+        if (frame_refcounts[frame_num] == 0) {
+            pmm_free_frame(frame_addr);
+        }
+    }
 }
 
 /* Get reference count */
@@ -70,10 +80,7 @@ uint32_t pmm_get_ref_count(uint32_t frame_addr) {
         return 0;
     }
     
-    /* TODO: Implement
-     * return frame_refcounts[frame_num];
-     */
-    return 0;
+    return frame_refcounts[frame_num];
 }
 
 /* Get PMM statistics */
@@ -86,5 +93,14 @@ void pmm_get_stats(pmm_stats_t* stats) {
     stats->total_frames = pmm_get_free_frames() + pmm_get_used_frames();
     stats->used_frames = pmm_get_used_frames();
     stats->free_frames = pmm_get_free_frames();
-    stats->shared_frames = 0;  /* TODO: Count frames with refcount > 1 */
+    
+    /* Count shared frames (frames with refcount > 1) */
+    stats->shared_frames = 0;
+    if (frame_refcounts != 0) {
+        for (uint32_t i = 0; i < num_frames_total; i++) {
+            if (frame_refcounts[i] > 1) {
+                stats->shared_frames++;
+            }
+        }
+    }
 }

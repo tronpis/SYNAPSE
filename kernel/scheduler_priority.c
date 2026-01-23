@@ -1,4 +1,4 @@
-/* SYNAPSE SO - Scheduler Priority Support (Stub Implementation) */
+/* SYNAPSE SO - Scheduler Priority Support Implementation */
 /* Licensed under GPLv3 */
 
 #include <kernel/scheduler.h>
@@ -19,6 +19,11 @@ void scheduler_set_priority(process_t* proc, uint32_t priority) {
     }
     
     proc->priority = priority;
+    vga_print("[+] Set priority ");
+    vga_print_dec(priority);
+    vga_print(" for process ");
+    vga_print(proc->name);
+    vga_print("\n");
 }
 
 /* Get process priority */
@@ -36,15 +41,35 @@ void scheduler_boost_priority(process_t* proc) {
         return;
     }
     
-    /* TODO: Full implementation
-     * 1. Increase priority by 1 level
-     * 2. Mark as boosted
-     * 3. Reset after some time
-     */
-    
+    /* Increase priority by 1 level, but don't exceed maximum */
     if (proc->priority < PRIORITY_MAX) {
         proc->priority++;
+        vga_print("[+] Boosted priority for process ");
+        vga_print(proc->name);
+        vga_print(" to ");
+        vga_print_dec(proc->priority);
+        vga_print("\n");
     }
+}
+
+/* Count blocked processes */
+static uint32_t count_blocked_processes(void) {
+    uint32_t count = 0;
+    process_t* proc = process_list;
+    
+    if (proc == 0) {
+        return 0;
+    }
+    
+    process_t* start = proc;
+    do {
+        if (proc->state == PROC_STATE_BLOCKED) {
+            count++;
+        }
+        proc = proc->next;
+    } while (proc != 0 && proc != start);
+    
+    return count;
 }
 
 /* Get scheduler statistics */
@@ -57,7 +82,7 @@ void scheduler_get_stats(scheduler_stats_t* stats) {
     
     /* Update process counts */
     stats->processes_ready = scheduler_get_ready_count();
-    stats->processes_blocked = 0;  /* TODO: Count blocked processes */
+    stats->processes_blocked = count_blocked_processes();
 }
 
 /* Reset scheduler statistics */
