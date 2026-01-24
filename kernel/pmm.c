@@ -193,7 +193,12 @@ void pmm_free_frame(uint32_t frame_addr) {
 
     /* Check reference count before decrementing */
     uint32_t refcount = pmm_get_ref_count(frame_addr);
-    if (refcount <= 1) {
+    if (refcount == 0U) {
+        /* Reference count already 0, should not happen */
+        return;
+    }
+
+    if (refcount == 1U) {
         /* This is the last reference, free the frame */
         pmm_unref_frame(frame_addr);
         frame_set_free(frame);

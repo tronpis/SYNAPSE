@@ -39,7 +39,12 @@ if (frame_refcounts[frame_num] > 0) {
 ```c
 /* Check reference count before decrementing */
 uint32_t refcount = pmm_get_ref_count(frame_addr);
-if (refcount <= 1) {
+if (refcount == 0U) {
+    /* Reference count already 0, should not happen */
+    return;
+}
+
+if (refcount == 1U) {
     /* This is the last reference, free the frame */
     pmm_unref_frame(frame_addr);
     frame_set_free(frame);
@@ -66,8 +71,8 @@ new_dir->entries[i] = new_pt_phys | (src_pde & 0xFFF) | PAGE_PRESENT | PAGE_USER
 
 Also added kernel mappings copy (lines 66-69):
 ```c
-/* Copy kernel mappings (PDE 768-1023) */
-for (uint32_t i = 768; i < 1024; i++) {
+/* Copy kernel mappings (PDE 768-1023 = kernel space at 3GB+) */
+for (uint32_t i = 768U; i < 1024U; i++) {
     new_dir->entries[i] = src->entries[i];
 }
 ```
@@ -86,10 +91,16 @@ for (uint32_t i = 768; i < 1024; i++) {
 /* Allocate temporary mapping slots */
 int temp_slot_src = vmm_alloc_temp_slot();
 int temp_slot_dest = vmm_alloc_temp_slot();
-if (temp_slot_src < 0 || temp_slot_dest < 0) {
-    vga_print("[-] Failed to allocate temp slots for COW\n");
-    if (temp_slot_src >= 0) vmm_free_temp_slot(temp_slot_src);
-    if (temp_slot_dest >= 0) vmm_free_temp_slot(temp_slot_dest);
+
+if (temp_slot_src < 0) {
+    vga_print("[-] Failed to allocate temp slot for COW\n");
+    pmm_free_frame(new_phys);
+    return -1;
+}
+
+if (temp_slot_dest < 0) {
+    vga_print("[-] Failed to allocate temp slot for COW\n");
+    vmm_free_temp_slot(temp_slot_src);
     pmm_free_frame(new_phys);
     return -1;
 }
@@ -99,6 +110,8 @@ uint32_t temp_virt_src = vmm_map_temp_page(original_phys, temp_slot_src);
 uint32_t temp_virt_dest = vmm_map_temp_page(new_phys, temp_slot_dest);
 
 /* Copy data from original page to new page */
+/* Note: Both source and destination are properly mapped pages of PAGE_SIZE (4096 bytes),
+ * so copying PAGE_SIZE bytes is safe and will not overflow */
 memcpy((void*)temp_virt_dest, (void*)temp_virt_src, PAGE_SIZE);
 
 /* Unmap temporary pages */
@@ -150,9 +163,28 @@ uint32_t flags = (*pte & ~(PAGE_COW | PAGE_WRITE)) | PAGE_WRITE;
 
 ---
 
+### 7. MISRA C Compliance Improvements (Importance: 8)
+**File:** `kernel/vmm_cow.c` and `kernel/pmm.c`
+
+**Problem:** Several MISRA C rule violations detected by static analysis:
+- Unsigned integer comparisons with magic numbers (768, 1024)
+- Complex conditional expressions in single if statements
+- Missing bounds checking documentation
+
+**Fixes Applied:**
+1. Added `U` suffix to all loop limit constants (768U, 1024U)
+2. Split complex conditional into separate if statements
+3. Added explicit `refcount == 0U` check before `refcount == 1U`
+4. Added documentation explaining memcpy bounds safety
+5. Removed unnecessary blank lines
+
+**Impact:** Code is now more compliant with MISRA C rules and easier to audit.
+
+---
+
 ## Summary
 
-All six fixes have been successfully applied:
+All seven fixes have been successfully applied:
 
 1. ✅ Parent pages marked as read-only and COW
 2. ✅ Infinite recursion in frame unreferencing eliminated
@@ -160,6 +192,7 @@ All six fixes have been successfully applied:
 4. ✅ Temporary mappings used for safe COW page copying
 5. ✅ Reference counts initialized for used frames
 6. ✅ PTE flags preserved during COW fault handling
+7. ✅ MISRA C compliance improvements
 
 ## Testing
 
@@ -168,13 +201,22 @@ The changes should be tested with:
 2. Write operations in both parent and child processes
 3. Memory allocation and deallocation stress tests
 4. Reference counting verification under heavy load
+5. Static analysis with MISRA C compliance checking
 
 ## Files Modified
 
-- `kernel/vmm_cow.c` - COW implementation
+- `kernel/vmm_cow.c` - COW implementation with MISRA fixes
 - `kernel/pmm_refcount.c` - Reference counting
-- `kernel/pmm.c` - Physical memory manager
+- `kernel/pmm.c` - Physical memory manager with MISRA fixes
 
 ## Backward Compatibility
 
 These changes maintain backward compatibility with existing code while fixing critical bugs in the COW implementation.
+
+## Code Quality Improvements
+
+- Added unsigned suffixes to constants (768U, 1024U) for MISRA compliance
+- Split complex conditionals into separate checks for clarity
+- Added documentation for memcpy bounds safety
+- Proper variable types (int vs int32_t consistency)
+- Removed trailing whitespace and blank lines

@@ -19,8 +19,8 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
         return 0;
     }
     
-    /* Clone user space pages (first 768 entries) */
-    for (uint32_t i = 0; i < 768; i++) {
+    /* Clone user space pages (first 768 entries = 3GB address space) */
+    for (uint32_t i = 0; i < 768U; i++) {
         uint32_t src_pde = src->entries[i];
         
         if (src_pde & PAGE_PRESENT) {
@@ -41,7 +41,7 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
             memset(new_pt, 0, PAGE_SIZE);
             
             /* Copy page table entries and mark as COW */
-            for (uint32_t j = 0; j < 1024; j++) {
+            for (uint32_t j = 0; j < 1024U; j++) {
                 uint32_t src_pte = src_pt->entries[j];
 
                 if (src_pte & PAGE_PRESENT) {
@@ -63,8 +63,8 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
         }
     }
 
-    /* Copy kernel mappings (PDE 768-1023) */
-    for (uint32_t i = 768; i < 1024; i++) {
+    /* Copy kernel mappings (PDE 768-1023 = kernel space at 3GB+) */
+    for (uint32_t i = 768U; i < 1024U; i++) {
         new_dir->entries[i] = src->entries[i];
     }
 
@@ -93,10 +93,16 @@ int vmm_handle_cow_fault(uint32_t fault_addr) {
     /* Allocate temporary mapping slots */
     int temp_slot_src = vmm_alloc_temp_slot();
     int temp_slot_dest = vmm_alloc_temp_slot();
-    if (temp_slot_src < 0 || temp_slot_dest < 0) {
-        vga_print("[-] Failed to allocate temp slots for COW\n");
-        if (temp_slot_src >= 0) vmm_free_temp_slot(temp_slot_src);
-        if (temp_slot_dest >= 0) vmm_free_temp_slot(temp_slot_dest);
+
+    if (temp_slot_src < 0) {
+        vga_print("[-] Failed to allocate temp slot for COW\n");
+        pmm_free_frame(new_phys);
+        return -1;
+    }
+
+    if (temp_slot_dest < 0) {
+        vga_print("[-] Failed to allocate temp slot for COW\n");
+        vmm_free_temp_slot(temp_slot_src);
         pmm_free_frame(new_phys);
         return -1;
     }
@@ -106,6 +112,8 @@ int vmm_handle_cow_fault(uint32_t fault_addr) {
     uint32_t temp_virt_dest = vmm_map_temp_page(new_phys, temp_slot_dest);
 
     /* Copy data from original page to new page */
+    /* Note: Both source and destination are properly mapped pages of PAGE_SIZE (4096 bytes),
+     * so copying PAGE_SIZE bytes is safe and will not overflow */
     memcpy((void*)temp_virt_dest, (void*)temp_virt_src, PAGE_SIZE);
 
     /* Unmap temporary pages */
