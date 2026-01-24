@@ -43,12 +43,15 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
             /* Copy page table entries and mark as COW */
             for (uint32_t j = 0; j < 1024; j++) {
                 uint32_t src_pte = src_pt->entries[j];
-                
+
                 if (src_pte & PAGE_PRESENT) {
+                    /* Mark source PTE as read-only and COW */
+                    src_pt->entries[j] = (src_pte & ~PAGE_WRITE) | PAGE_COW;
+
                     /* Copy PTE but mark as read-only and COW */
                     uint32_t new_pte = (src_pte & ~PAGE_WRITE) | PAGE_COW | PAGE_PRESENT;
                     new_pt->entries[j] = new_pte;
-                    
+
                     /* Increment reference count for the physical frame */
                     uint32_t frame_addr = src_pte & 0xFFFFF000;
                     pmm_ref_frame(frame_addr);
@@ -56,10 +59,15 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
             }
             
             /* Set new page directory entry */
-            new_dir->entries[i] = new_pt_phys | (src_pde & ~PAGE_WRITE) | PAGE_COW | PAGE_PRESENT;
+            new_dir->entries[i] = new_pt_phys | (src_pde & 0xFFF) | PAGE_PRESENT | PAGE_USER;
         }
     }
-    
+
+    /* Copy kernel mappings (PDE 768-1023) */
+    for (uint32_t i = 768; i < 1024; i++) {
+        new_dir->entries[i] = src->entries[i];
+    }
+
     vga_print("[+] Page directory cloned successfully\n");
     return new_dir;
 }
@@ -81,21 +89,38 @@ int vmm_handle_cow_fault(uint32_t fault_addr) {
         vga_print("[-] Failed to allocate frame for COW\n");
         return -1;
     }
-    
-    /* Copy data from original page to new page */
-    uint8_t* src = (uint8_t*)(original_phys + KERNEL_VIRT_START);
-    uint8_t* dest = (uint8_t*)(new_phys + KERNEL_VIRT_START);
-    
-    for (uint32_t i = 0; i < PAGE_SIZE; i++) {
-        dest[i] = src[i];
+
+    /* Allocate temporary mapping slots */
+    int temp_slot_src = vmm_alloc_temp_slot();
+    int temp_slot_dest = vmm_alloc_temp_slot();
+    if (temp_slot_src < 0 || temp_slot_dest < 0) {
+        vga_print("[-] Failed to allocate temp slots for COW\n");
+        if (temp_slot_src >= 0) vmm_free_temp_slot(temp_slot_src);
+        if (temp_slot_dest >= 0) vmm_free_temp_slot(temp_slot_dest);
+        pmm_free_frame(new_phys);
+        return -1;
     }
-    
-    /* Update PTE to point to new frame with write permissions */
-    *pte = new_phys | (PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
-    
+
+    /* Temporarily map pages to copy data */
+    uint32_t temp_virt_src = vmm_map_temp_page(original_phys, temp_slot_src);
+    uint32_t temp_virt_dest = vmm_map_temp_page(new_phys, temp_slot_dest);
+
+    /* Copy data from original page to new page */
+    memcpy((void*)temp_virt_dest, (void*)temp_virt_src, PAGE_SIZE);
+
+    /* Unmap temporary pages */
+    vmm_unmap_temp_page(temp_slot_src);
+    vmm_unmap_temp_page(temp_slot_dest);
+    vmm_free_temp_slot(temp_slot_src);
+    vmm_free_temp_slot(temp_slot_dest);
+
+    /* Preserve flags when updating PTE */
+    uint32_t flags = (*pte & ~(PAGE_COW | PAGE_WRITE)) | PAGE_WRITE;
+    *pte = new_phys | flags;
+
     /* Decrement reference count for original frame */
     pmm_unref_frame(original_phys);
-    
+
     /* Flush TLB */
     vmm_flush_tlb(fault_addr);
     

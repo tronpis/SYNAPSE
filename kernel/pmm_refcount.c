@@ -52,20 +52,15 @@ void pmm_unref_frame(uint32_t frame_addr) {
     if (frame_refcounts == 0) {
         return;  /* Not initialized */
     }
-    
+
     uint32_t frame_num = frame_addr / FRAME_SIZE;
     if (frame_num >= num_frames_total) {
         return;
     }
-    
+
     /* Decrement reference count if greater than 0 */
     if (frame_refcounts[frame_num] > 0) {
         frame_refcounts[frame_num]--;
-        
-        /* Free frame if reference count reaches 0 */
-        if (frame_refcounts[frame_num] == 0) {
-            pmm_free_frame(frame_addr);
-        }
     }
 }
 
