@@ -134,6 +134,9 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
         }
     }
 
+    /* Initialize reference counting */
+    pmm_refcount_init(total_frames);
+
     vga_print("    Total memory: ");
     vga_print_dec(total_memory / 1024 / 1024);
     vga_print(" MB\n");
@@ -156,6 +159,10 @@ uint32_t pmm_alloc_frame(void) {
         if (frame_is_free(frame)) {
             frame_set_used(frame);
             last_used_frame = frame;
+            
+            /* Initialize reference count to 1 for newly allocated frames */
+            pmm_ref_frame(frame_to_addr(frame));
+            
             return frame_to_addr(frame);
         }
     }
@@ -177,7 +184,13 @@ void pmm_free_frame(uint32_t frame_addr) {
         return;
     }
 
-    frame_set_free(frame);
+    /* Use reference counting to manage frame lifecycle */
+    pmm_unref_frame(frame_addr);
+    
+    /* Only mark as free if reference count reaches 0 */
+    if (pmm_get_ref_count(frame_addr) == 0) {
+        frame_set_free(frame);
+    }
 }
 
 /* Get number of free frames */

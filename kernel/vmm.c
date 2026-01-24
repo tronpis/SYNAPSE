@@ -227,6 +227,19 @@ void vmm_page_fault_handler(uint32_t error_code) {
 
     if (error_code & PF_PRESENT) {
         vga_print("    Page was present\n");
+        
+        /* Check if this is a COW page fault */
+        if (error_code & PF_WRITE && vmm_is_page_cow(fault_addr)) {
+            vga_print("    COW page fault detected\n");
+            
+            /* Handle COW page fault */
+            if (vmm_handle_cow_fault(fault_addr) == 0) {
+                vga_print("    COW page fault handled successfully\n");
+                return;  /* Fault handled, continue execution */
+            } else {
+                vga_print("    Failed to handle COW page fault\n");
+            }
+        }
     } else {
         vga_print("    Page not present\n");
     }

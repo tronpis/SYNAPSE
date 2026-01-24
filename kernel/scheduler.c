@@ -33,18 +33,32 @@ static process_t* scheduler_pick_next(process_t* current) {
         return 0;
     }
 
+    /* Priority-based scheduling: find the highest priority runnable process */
+    process_t* best_proc = 0;
+    uint32_t best_priority = 0;
+    
     process_t* start = (current != 0 && current->next != 0) ? current->next :
                        process_list;
     process_t* proc = start;
 
     do {
         if (proc_is_runnable(proc)) {
-            return proc;
+            /* If this process has higher priority than current best, choose it */
+            if (best_proc == 0 || proc->priority > best_priority) {
+                best_proc = proc;
+                best_priority = proc->priority;
+            }
         }
 
         proc = proc->next;
     } while (proc != 0 && proc != start);
 
+    /* If we found a runnable process, return it */
+    if (best_proc != 0) {
+        return best_proc;
+    }
+
+    /* Fallback to current if no runnable processes found */
     return current;
 }
 
@@ -52,7 +66,11 @@ static process_t* scheduler_pick_next(process_t* current) {
 void scheduler_init(void) {
     vga_print("[+] Initializing Scheduler...\n");
     quantum = DEFAULT_QUANTUM;
-    vga_print("    Scheduler ready\n");
+    
+    /* Initialize scheduler statistics */
+    scheduler_reset_stats();
+    
+    vga_print("    Scheduler ready with priority support\n");
 }
 
 /* Add process to scheduler */
@@ -66,6 +84,11 @@ void scheduler_add_process(process_t* proc) {
     }
 
     proc->quantum = quantum;
+    
+    /* Set default priority if not set */
+    if (proc->priority == 0) {
+        proc->priority = PRIORITY_NORMAL;
+    }
 }
 
 /* Remove process from scheduler */
@@ -98,6 +121,9 @@ registers_t* scheduler_tick(registers_t* regs) {
 
     if (current == 0) {
         if (process_list == 0) {
+            /* Update scheduler statistics - we're idle */
+            scheduler_update_stats(1);  /* 1 = idle */
+            
             /* Restore interrupts before returning */
             if (flags & (1 << 9)) {
                 asm volatile("sti");
@@ -131,6 +157,8 @@ registers_t* scheduler_tick(registers_t* regs) {
 
     process_t* next = scheduler_pick_next(current);
     if (next == 0 || next == current) {
+        /* Update scheduler statistics - we're idle */
+        scheduler_update_stats(1);  /* 1 = idle */
         return regs;
     }
 
@@ -146,6 +174,10 @@ registers_t* scheduler_tick(registers_t* regs) {
     if (next->quantum == 0) {
         next->quantum = quantum;
     }
+
+    /* Update scheduler statistics */
+    scheduler_count_switch();
+    scheduler_update_stats(0);  /* 0 = not idle (we're switching to a process) */
 
     vmm_switch_page_directory(next->page_dir);
     process_set_current(next);
