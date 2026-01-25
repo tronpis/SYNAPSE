@@ -6,16 +6,7 @@
 
 #include <stdint.h>
 #include <kernel/vmm.h>
-
-/* Process states */
-#define PROC_STATE_READY    0
-#define PROC_STATE_RUNNING  1
-#define PROC_STATE_BLOCKED  2
-#define PROC_STATE_ZOMBIE   3
-#define PROC_STATE_STOPPED  4
-
-/* Process flags */
-#define PROC_FLAG_KERNEL    (1 << 0)
+#include <kernel/const.h>
 
 /* Process ID */
 typedef uint32_t pid_t;

@@ -15,6 +15,8 @@
 #include <kernel/usermode.h>
 #include <kernel/cpu.h>
 #include <kernel/early.h>
+#include <kernel/vfs.h>
+#include <kernel/ramfs.h>
 
 /* Multiboot information structure */
 typedef struct {
@@ -59,25 +61,43 @@ static void demo_syscalls(void) {
 }
 
 static void shell_process(void) {
-    /* Simple interactive shell */
-    char buffer[256];
-    int pos = 0;
-
-    vga_print("[SHELL] SYNAPSE SO Shell v0.1\n");
-    vga_print("[SHELL] Type 'help' for commands\n");
-    vga_print("[SHELL] $ ");
+    /* Simple interactive shell with fork/exec */
+    vga_print("\n[+] SYNAPSE SO Shell v0.2\n");
+    vga_print("[+] Type 'help' for commands\n\n");
 
     while (1) {
-        /* Read character from keyboard (not implemented yet) */
-        /* For now, simulate simple commands */
-        vga_print("\n[SHELL] Commands: help, mem, procs, time, exit\n");
         vga_print("[SHELL] $ ");
 
-        for (uint32_t i = 0; i < 100000000; i++) {
+        /* Delay to simulate waiting for input */
+        for (uint32_t i = 0; i < 50000000; i++) {
             __asm__ __volatile__("nop");
         }
 
-        break; /* Exit for now until keyboard input is implemented */
+        /* For now, just demonstrate fork capability */
+        vga_print("\n[SHELL] Running fork demo...\n");
+
+        pid_t pid = do_fork();
+        if (pid == 0) {
+            /* Child process */
+            vga_print("  [CHILD] I am the child process!\n");
+            sys_exit(0);
+        } else if (pid > 0) {
+            /* Parent process */
+            vga_print("  [PARENT] Child PID: ");
+            vga_print_dec(pid);
+            vga_print("\n");
+
+            /* Wait for child */
+            do_wait(-1, 0);
+            vga_print("  [PARENT] Child exited\n");
+        } else {
+            vga_print("  [SHELL] Fork failed\n");
+        }
+
+        /* Small delay between commands */
+        for (uint32_t i = 0; i < 100000000; i++) {
+            __asm__ __volatile__("nop");
+        }
     }
 }
 
@@ -221,6 +241,14 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     vga_print("\n=== PHASE 3: System Call Interface & User Mode ===\n");
     syscall_init();
+
+    /* Phase 4: VFS and Filesystem */
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_print("\n=== PHASE 4: VFS and Filesystem ===\n");
+    vfs_init();
+    ramfs_init();
+    ramfs_create_file("/test.txt", "Hello from SYNAPSE SO VFS!");
+    ramfs_create_file("/readme.txt", "Welcome to SYNAPSE SO Phase 4!");
     
     /* Create user mode test process */
     vga_print("[+] Creating user mode test process...\n");

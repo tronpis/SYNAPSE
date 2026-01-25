@@ -7,6 +7,10 @@
 #include <kernel/idt.h>
 #include <kernel/string.h>
 #include <kernel/vmm.h>
+#include <kernel/fork.h>
+#include <kernel/exec.h>
+#include <kernel/wait.h>
+#include <kernel/vfs.h>
 
 /* System call table */
 static syscall_func_t syscall_table[NUM_SYSCALLS];
@@ -30,6 +34,7 @@ void syscall_init(void) {
     syscall_register(SYS_EXEC, (syscall_func_t)sys_exec);
     syscall_register(SYS_WAIT, (syscall_func_t)sys_wait);
     syscall_register(SYS_GETPID, (syscall_func_t)sys_getpid);
+    syscall_register(SYS_LSEEK, (syscall_func_t)sys_lseek);
 
     vga_print("    System calls registered\n");
 }
@@ -172,53 +177,53 @@ int sys_read(uint32_t fd, uint32_t buffer, uint32_t count) {
 
 /* Open a file */
 int sys_open(uint32_t filename, uint32_t flags, uint32_t mode) {
-    (void)filename; /* Not implemented yet */
-    (void)flags;
-    (void)mode;
+    /* Validate pointer is in user space */
+    if (filename >= 0xC0000000) {
+        return -1;
+    }
 
-    /* Not implemented yet - file system needed */
-    return -1;
+    const char* path = (const char*)filename;
+    if (path == 0) {
+        return -1;
+    }
+
+    return vfs_open(path, flags, mode);
 }
 
 /* Close a file descriptor */
 int sys_close(uint32_t fd) {
-    (void)fd; /* Not implemented yet */
-
-    /* Not implemented yet - file system needed */
-    return -1;
+    return vfs_close(fd);
 }
 
 /* Create a new process (fork) */
 int sys_fork(void) {
-    /* Not fully implemented yet */
-    /* This is a stub for Phase 3 */
-    process_t* current = process_get_current();
-    if (current == 0) {
-        return -1;
-    }
-
-    vga_print("[+] sys_fork called (stub)\n");
-    return -1; /* Return -1 to indicate not implemented */
+    return (int)do_fork();
 }
 
 /* Execute a new program */
 int sys_exec(uint32_t path, uint32_t argv) {
-    (void)path; /* Not implemented yet */
-    (void)argv;
+    /* Validate pointer is in user space */
+    if (path >= 0xC0000000) {
+        return -1;
+    }
 
-    /* Not implemented yet - needs ELF loader integration */
-    vga_print("[+] sys_exec called (stub)\n");
-    return -1;
+    const char* prog_path = (const char*)path;
+    char* const* argv_ptr = (char* const*)argv;
+
+    return do_exec(prog_path, argv_ptr);
 }
 
 /* Wait for a process to exit */
 int sys_wait(uint32_t pid, uint32_t status) {
-    (void)pid; /* Not implemented yet */
-    (void)status;
+    /* Validate status pointer is in user space */
+    if (status >= 0xC0000000) {
+        return -1;
+    }
 
-    /* Not implemented yet */
-    vga_print("[+] sys_wait called (stub)\n");
-    return -1;
+    int* status_ptr = (int*)status;
+    pid_t wait_pid = (pid_t)pid;
+
+    return (int)do_wait(wait_pid, status_ptr);
 }
 
 /* Get current process ID */
@@ -229,4 +234,9 @@ int sys_getpid(void) {
     }
 
     return (int)current->pid;
+}
+
+/* Lseek system call */
+int sys_lseek(int fd, int offset, int whence) {
+    return vfs_lseek(fd, offset, whence);
 }
