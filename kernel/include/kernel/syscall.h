@@ -16,9 +16,10 @@
 #define SYS_EXEC     7
 #define SYS_WAIT     8
 #define SYS_GETPID   9
+#define SYS_LSEEK    10
 
 /* Maximum number of system calls */
-#define NUM_SYSCALLS 32
+#define NUM_SYSCALLS 64
 
 /* System call function prototype */
 typedef int (*syscall_func_t)(uint32_t arg1, uint32_t arg2,
@@ -47,6 +48,7 @@ int sys_fork(void);
 int sys_exec(uint32_t path, uint32_t argv);
 int sys_wait(uint32_t pid, uint32_t status);
 int sys_getpid(void);
+int sys_lseek(int fd, int offset, int whence);
 
 /* Helper prototypes (definitions must be in a C file where `struct registers` is defined) */
 uint32_t syscall_get_num(struct registers* regs);

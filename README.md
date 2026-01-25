@@ -52,6 +52,19 @@ El kernel actual incluye:
 - Syscalls stub: read, open, close, fork, exec, wait
 - Pendientes: fork/exec completos, filesystem, IPC
 
+**Fase 4** ✅ COMPLETADA (Enero 2025) - VFS y Sistema de Archivos
+El kernel actual incluye:
+- Fork system call - Creación de procesos con Copy-on-Write
+- Exec system call - Carga de programas ELF
+- Wait system call - Esperar procesos hijos
+- Virtual File System (VFS) - Capa de abstracción de archivos
+- RAM filesystem - Sistema de archivos en memoria
+- Shell mejorado - Demostración de fork/wait
+- File descriptor table - Gestión de archivos abiertos
+- Operaciones de archivos: open, close, read, write, lseek
+- Integración completa con VFS y syscalls
+- Pendientes: driver de disco, filesystem ext2, directorios
+
 El repositorio contiene documentación completa, código fuente del kernel, y herramientas para construir y ejecutar el sistema operativo.
 
 ## Construcción y Ejecución

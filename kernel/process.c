@@ -8,17 +8,16 @@
 #include <kernel/string.h>
 #include <kernel/vga.h>
 #include <kernel/vmm.h>
+#include <kernel/const.h>
 
-#define KERNEL_STACK_SIZE 0x2000
-#define USER_STACK_SIZE   0x1000
 #define IRQ0_VECTOR       32
 
 /* Process list */
 process_t* process_list = 0;
 static process_t* current_process = 0;
 
-/* Next PID to assign */
-static pid_t next_pid = 1;
+/* Next PID to assign (extern for fork.c) */
+pid_t next_pid = 1;
 
 static void process_list_insert(process_t* proc) {
     unsigned int flags;
