@@ -1,6 +1,8 @@
 /* SYNAPSE SO - Early Boot Diagnostics Implementation */
 /* Licensed under GPLv3 */
 
+#include <stddef.h>
+
 #include <kernel/early.h>
 #include <kernel/vga.h>
 #include <kernel/cpu.h>

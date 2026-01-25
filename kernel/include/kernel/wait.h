@@ -4,7 +4,7 @@
 #ifndef KERNEL_WAIT_H
 #define KERNEL_WAIT_H
 
-#include <stdint.h>
+#include <kernel/process.h>
 
 /* Wait system call implementation */
 pid_t do_wait(pid_t pid, int* status);

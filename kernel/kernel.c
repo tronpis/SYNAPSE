@@ -12,6 +12,8 @@
 #include <kernel/timer.h>
 #include <kernel/elf.h>
 #include <kernel/syscall.h>
+#include <kernel/fork.h>
+#include <kernel/wait.h>
 #include <kernel/usermode.h>
 #include <kernel/cpu.h>
 #include <kernel/early.h>

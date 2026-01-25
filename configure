@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# SYNAPSE SO - configure stub
+# Licensed under GPLv3
+
+set -e
+
+echo "SYNAPSE SO: no configuration step is required."
+echo "Run 'make' to build the kernel, or 'make all' to build the ISO image."

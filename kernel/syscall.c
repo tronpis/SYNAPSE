@@ -51,8 +51,28 @@ void syscall_register(uint32_t num, syscall_func_t handler) {
     syscall_table[num] = handler;
 }
 
+uint32_t syscall_get_num(registers_t* regs) {
+    if (regs == 0) {
+        return 0;
+    }
+
+    return regs->eax;
+}
+
+void syscall_set_return(registers_t* regs, uint32_t value) {
+    if (regs == 0) {
+        return;
+    }
+
+    regs->eax = value;
+}
+
 /* System call handler (called from assembly) */
-void syscall_handler(registers_t* regs) {
+registers_t* syscall_handler(registers_t* regs) {
+    if (regs == 0) {
+        return 0;
+    }
+
     /* Get syscall number */
     uint32_t num = syscall_get_num(regs);
 
@@ -61,24 +81,24 @@ void syscall_handler(registers_t* regs) {
         vga_print("[-] Invalid syscall: ");
         vga_print_dec(num);
         vga_print("\n");
-        syscall_set_return(regs, -1);
-        return;
+        syscall_set_return(regs, (uint32_t)-1);
+        return regs;
     }
 
     /* Call syscall handler */
     syscall_func_t handler = syscall_table[num];
-    uint32_t ret = handler(regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
+    uint32_t ret = handler(regs->ebx, regs->ecx, regs->edx, regs->esi,
+                           regs->edi);
 
     /* Set return value */
     syscall_set_return(regs, ret);
+    return regs;
 }
 
 /* System call implementations */
 
 /* Exit the current process */
 int sys_exit(uint32_t exit_code) {
-    (void)exit_code; /* Parameter not used yet */
-
     process_t* current = process_get_current();
     if (current == 0) {
         return -1;
@@ -88,7 +108,7 @@ int sys_exit(uint32_t exit_code) {
     vga_print(current->name);
     vga_print(" exited]\n");
 
-    process_exit(current);
+    process_exit((int)exit_code);
     return 0;
 }
 

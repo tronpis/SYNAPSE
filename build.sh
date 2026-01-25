@@ -111,7 +111,7 @@ build_kernel() {
     print_status "Building SYNAPSE SO kernel..."
     
     # Run make
-    if make -j$(nproc); then
+    if make -j$(nproc) all; then
         print_success "Build successful!"
         return 0
     else

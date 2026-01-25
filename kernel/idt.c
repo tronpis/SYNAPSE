@@ -85,6 +85,9 @@ extern void irq15(void);
 extern void isr_default(void);
 extern void isr_common_stub(void);
 
+/* System call interrupt stub (int 0x80) */
+extern void isr_syscall(void);
+
 /* Set an IDT gate */
 static void idt_set_gate(unsigned char num, unsigned int base,
                          unsigned short sel, unsigned char flags) {
