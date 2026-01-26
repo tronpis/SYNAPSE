@@ -17,6 +17,7 @@ static uint32_t total_memory;
 
 /* Kernel heap for pre-paging allocations */
 static uint8_t* kernel_heap;
+static uint32_t kernel_heap_phys;
 static uint32_t kernel_heap_size;
 static uint32_t kernel_heap_used;
 
@@ -39,24 +40,24 @@ static inline uint32_t frame_to_addr(uint32_t frame) {
 
 /* Test if a frame is free */
 static inline int frame_is_free(uint32_t frame) {
-    uint32_t index = frame / 32;
-    uint32_t bit = frame % 32;
-    return !(frames_bitmap[index] & (1 << bit));
+    uint32_t index = frame / 32U;
+    uint32_t bit = frame % 32U;
+    return (frames_bitmap[index] & (1U << bit)) == 0U;
 }
 
 /* Set frame as used */
 static inline void frame_set_used(uint32_t frame) {
-    uint32_t index = frame / 32;
-    uint32_t bit = frame % 32;
-    frames_bitmap[index] |= (1 << bit);
+    uint32_t index = frame / 32U;
+    uint32_t bit = frame % 32U;
+    frames_bitmap[index] |= (1U << bit);
     used_frames++;
 }
 
 /* Set frame as free */
 static inline void frame_set_free(uint32_t frame) {
-    uint32_t index = frame / 32;
-    uint32_t bit = frame % 32;
-    frames_bitmap[index] &= ~(1 << bit);
+    uint32_t index = frame / 32U;
+    uint32_t bit = frame % 32U;
+    frames_bitmap[index] &= ~(1U << bit);
     used_frames--;
 }
 
@@ -72,10 +73,10 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
     /* Find highest memory address */
     for (uint32_t i = 0; i < num_entries; i++) {
         uint32_t end = entry->base_addr_low + entry->length_low;
-        if (entry->type == MEM_TYPE_AVAILABLE && end > total_memory) {
+        if ((entry->type == MEM_TYPE_AVAILABLE) && (end > total_memory)) {
             total_memory = end;
         }
-        entry = (mem_map_entry_t*)((uint32_t)entry + mmap_desc_size);
+        entry = (mem_map_entry_t*)((uint8_t*)entry + mmap_desc_size);
     }
 
     /* Calculate total frames */
@@ -104,43 +105,44 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
     for (uint32_t i = 0; i < num_entries; i++) {
         if (entry->type == MEM_TYPE_AVAILABLE) {
             uint32_t start_frame = addr_to_frame(entry->base_addr_low);
-            uint32_t end_frame = addr_to_frame(entry->base_addr_low + entry->length_low);
+            uint32_t end_frame = addr_to_frame(entry->base_addr_low +
+                                               entry->length_low);
 
             for (uint32_t f = start_frame; f < end_frame; f++) {
-                if (frame_is_free(f)) {
+                if (frame_is_free(f) != 0) {
                     continue;
                 }
                 frame_set_free(f);
             }
         }
-        entry = (mem_map_entry_t*)((uint32_t)entry + mmap_desc_size);
+        entry = (mem_map_entry_t*)((uint8_t*)entry + mmap_desc_size);
     }
 
     /* Mark kernel region as used (1MB to 2MB for now) */
     uint32_t kernel_start_frame = addr_to_frame(0x100000);
     uint32_t kernel_end_frame = addr_to_frame(0x200000);
     for (uint32_t f = kernel_start_frame; f < kernel_end_frame; f++) {
-        if (frame_is_free(f)) {
+        if (frame_is_free(f) != 0) {
             frame_set_used(f);
         }
     }
 
     /* Mark bitmap area as used */
-    uint32_t bitmap_start_frame = addr_to_frame((uint32_t)frames_bitmap);
-    uint32_t bitmap_end_frame = addr_to_frame((uint32_t)frames_bitmap + bitmap_size);
+    uint32_t bitmap_start_frame = addr_to_frame(0x200000);
+    uint32_t bitmap_end_frame = addr_to_frame(0x200000 + bitmap_size);
     for (uint32_t f = bitmap_start_frame; f < bitmap_end_frame; f++) {
-        if (frame_is_free(f)) {
+        if (frame_is_free(f) != 0) {
             frame_set_used(f);
         }
     }
 
     /* Reserve the early kernel heap region (if configured). */
-    if (kernel_heap != 0 && kernel_heap_size != 0) {
-        uint32_t heap_start_frame = addr_to_frame((uint32_t)kernel_heap);
-        uint32_t heap_end_frame = addr_to_frame((uint32_t)kernel_heap +
+    if ((kernel_heap_phys != 0U) && (kernel_heap_size != 0U)) {
+        uint32_t heap_start_frame = addr_to_frame(kernel_heap_phys);
+        uint32_t heap_end_frame = addr_to_frame(kernel_heap_phys +
                                                 kernel_heap_size);
         for (uint32_t f = heap_start_frame; f < heap_end_frame; f++) {
-            if (frame_is_free(f)) {
+            if (frame_is_free(f) != 0) {
                 frame_set_used(f);
             }
         }
@@ -151,7 +153,7 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
 
     /* Set initial refcount for all used frames */
     for (uint32_t f = 0; f < total_frames; f++) {
-        if (!frame_is_free(f)) {
+        if (frame_is_free(f) == 0) {
             pmm_ref_frame(frame_to_addr(f));
         }
     }
@@ -175,7 +177,7 @@ uint32_t pmm_alloc_frame(void) {
     for (uint32_t i = 0; i < total_frames; i++) {
         uint32_t frame = (start_frame + i) % total_frames;
 
-        if (frame_is_free(frame)) {
+        if (frame_is_free(frame) != 0) {
             frame_set_used(frame);
             last_used_frame = frame;
 
@@ -199,7 +201,7 @@ void pmm_free_frame(uint32_t frame_addr) {
         return;
     }
 
-    if (frame_is_free(frame)) {
+    if (frame_is_free(frame) != 0) {
         return;
     }
 
@@ -232,6 +234,7 @@ uint32_t pmm_get_used_frames(void) {
 
 /* Initialize simple kernel heap for pre-paging allocations */
 void pmm_init_kernel_heap(uint32_t start, uint32_t size) {
+    kernel_heap_phys = start;
     kernel_heap = (uint8_t*)start;
     kernel_heap_size = size;
     kernel_heap_used = 0;
@@ -239,11 +242,11 @@ void pmm_init_kernel_heap(uint32_t start, uint32_t size) {
 
 /* Simple kernel malloc (before paging) */
 void* pmm_kmalloc(uint32_t size) {
-    if (kernel_heap_used + size > kernel_heap_size) {
+    if ((kernel_heap_used + size) > kernel_heap_size) {
         return 0;
     }
 
-    void* ptr = kernel_heap + kernel_heap_used;
+    void* ptr = (void*)(kernel_heap + kernel_heap_used);
     kernel_heap_used += size;
     return ptr;
 }
