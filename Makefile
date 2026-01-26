@@ -83,6 +83,8 @@ KERNEL_C_FILES = $(KERNEL_DIR)/kernel.c \
 	$(KERNEL_DIR)/syscall.c \
 	$(KERNEL_DIR)/usermode.c \
 	$(KERNEL_DIR)/sysinfo.c \
+	$(KERNEL_DIR)/serial.c \
+	$(KERNEL_DIR)/keyboard.c \
 	$(KERNEL_DIR)/fork.c \
 	$(KERNEL_DIR)/exec.c \
 	$(KERNEL_DIR)/wait.c \

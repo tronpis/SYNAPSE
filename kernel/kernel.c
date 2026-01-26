@@ -17,6 +17,8 @@
 #include <kernel/usermode.h>
 #include <kernel/cpu.h>
 #include <kernel/early.h>
+#include <kernel/serial.h>
+#include <kernel/keyboard.h>
 #include <kernel/vfs.h>
 #include <kernel/ramfs.h>
 
@@ -189,7 +191,11 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     vga_print("[+] Initializing Interrupt Descriptor Table...\n");
     idt_init();
     vga_print("    IDT loaded successfully\n");
-    
+
+    /* Initialize basic drivers */
+    serial_init(SERIAL_COM1_BASE);
+    keyboard_init();
+
     /* Phase 1 complete */
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_print("\n[SUCCESS] Phase 1 complete!\n");

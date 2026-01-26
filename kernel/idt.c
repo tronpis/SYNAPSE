@@ -9,6 +9,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/timer.h>
 #include <kernel/syscall.h>
+#include <kernel/keyboard.h>
 
 /* IDT entry structure (for 32-bit) */
 typedef struct {
@@ -153,6 +154,11 @@ registers_t* isr_handler(registers_t *regs) {
             if (new_regs == 0) {
                 new_regs = regs;
             }
+        }
+
+        /* IRQ1: Keyboard */
+        if (regs->int_no == 33) {
+            keyboard_irq_handler();
         }
 
         return new_regs;
