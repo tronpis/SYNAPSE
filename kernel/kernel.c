@@ -202,6 +202,10 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     vga_print("\n=== PHASE 2: Memory Management ===\n");
 
+    /* Initialize early PMM heap before pmm_init() so early subsystems
+       (like frame reference counting) can allocate memory safely. */
+    pmm_init_kernel_heap(0x300000, 0x100000); /* 1MB at 3MB */
+
     /* Initialize Physical Memory Manager */
     if (mbi != 0 && (mbi->flags & 0x40)) {
         mem_map_t* mmap = (mem_map_t*)mbi->mmap_addr;
@@ -210,9 +214,6 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
         /* Fallback: assume 16MB memory */
         vga_print("[-] Warning: No memory map, using default 16MB\n");
     }
-
-    /* Initialize simple kernel heap (before paging) */
-    pmm_init_kernel_heap(0x300000, 0x100000); /* 1MB at 3MB */
 
     /* Initialize Virtual Memory Manager */
     vmm_init();

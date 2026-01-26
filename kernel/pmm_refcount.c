@@ -3,7 +3,6 @@
 
 #include <kernel/pmm.h>
 #include <kernel/vga.h>
-#include <kernel/heap.h>
 
 /* Reference count table */
 static uint16_t* frame_refcounts = 0;
@@ -12,9 +11,10 @@ static uint32_t num_frames_total = 0;
 /* Initialize reference counting (called from pmm_init) */
 void pmm_refcount_init(uint32_t total_frames) {
     num_frames_total = total_frames;
-    
-    /* Allocate refcount table using kernel heap */
-    frame_refcounts = (uint16_t*)kmalloc(total_frames * sizeof(uint16_t));
+
+    /* Allocate refcount table using early PMM heap.
+       This runs before the full kernel heap (kmalloc) is initialized. */
+    frame_refcounts = (uint16_t*)pmm_kmalloc(total_frames * sizeof(uint16_t));
     if (frame_refcounts == 0) {
         vga_print("[-] Failed to allocate reference count table\n");
         return;

@@ -120,7 +120,7 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
     uint32_t kernel_start_frame = addr_to_frame(0x100000);
     uint32_t kernel_end_frame = addr_to_frame(0x200000);
     for (uint32_t f = kernel_start_frame; f < kernel_end_frame; f++) {
-        if (!frame_is_free(f)) {
+        if (frame_is_free(f)) {
             frame_set_used(f);
         }
     }
@@ -129,8 +129,20 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
     uint32_t bitmap_start_frame = addr_to_frame((uint32_t)frames_bitmap);
     uint32_t bitmap_end_frame = addr_to_frame((uint32_t)frames_bitmap + bitmap_size);
     for (uint32_t f = bitmap_start_frame; f < bitmap_end_frame; f++) {
-        if (!frame_is_free(f)) {
+        if (frame_is_free(f)) {
             frame_set_used(f);
+        }
+    }
+
+    /* Reserve the early kernel heap region (if configured). */
+    if (kernel_heap != 0 && kernel_heap_size != 0) {
+        uint32_t heap_start_frame = addr_to_frame((uint32_t)kernel_heap);
+        uint32_t heap_end_frame = addr_to_frame((uint32_t)kernel_heap +
+                                                kernel_heap_size);
+        for (uint32_t f = heap_start_frame; f < heap_end_frame; f++) {
+            if (frame_is_free(f)) {
+                frame_set_used(f);
+            }
         }
     }
 
