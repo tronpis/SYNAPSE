@@ -59,6 +59,9 @@ uint32_t vmm_get_phys_addr(uint32_t virt_addr);
 /* Allocate a new page directory for a process */
 page_directory_t* vmm_create_page_directory(void);
 
+/* Destroy a page directory and free user-space pages/tables */
+void vmm_destroy_page_directory(page_directory_t* pd);
+
 /* Switch to a new page directory */
 void vmm_switch_page_directory(page_directory_t* pd);
 

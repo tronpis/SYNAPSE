@@ -45,44 +45,51 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
     /* Clone user space pages (first 768 entries = 3GB address space) */
     for (uint32_t i = 0; i < 768U; i++) {
         uint32_t src_pde = src->entries[i];
-        
-        if (src_pde & PAGE_PRESENT) {
+
+        if ((src_pde & PAGE_PRESENT) != 0U) {
             /* Get source page table */
-            page_table_t* src_pt = (page_table_t*)((src_pde & 0xFFFFF000) + KERNEL_VIRT_START);
-            
+            page_table_t* src_pt =
+                (page_table_t*)((src_pde & 0xFFFFF000U) + KERNEL_VIRT_START);
+
             /* Create new page table for this directory entry */
             uint32_t new_pt_phys = pmm_alloc_frame();
-            if (new_pt_phys == 0) {
+            if (new_pt_phys == 0U) {
                 vga_print("[-] Failed to allocate page table for clone\n");
-                vmm_switch_page_directory(vmm_get_current_directory());
                 return 0;
             }
-            
-            page_table_t* new_pt = (page_table_t*)(new_pt_phys + KERNEL_VIRT_START);
-            
+
+            page_table_t* new_pt =
+                (page_table_t*)(new_pt_phys + KERNEL_VIRT_START);
+
             /* Clear new page table */
             memset(new_pt, 0, PAGE_SIZE);
-            
+
             /* Copy page table entries and mark as COW */
             for (uint32_t j = 0; j < 1024U; j++) {
                 uint32_t src_pte = src_pt->entries[j];
 
-                if (src_pte & PAGE_PRESENT) {
+                if ((src_pte & PAGE_PRESENT) != 0U) {
                     /* Mark source PTE as read-only and COW */
                     src_pt->entries[j] = (src_pte & ~PAGE_WRITE) | PAGE_COW;
 
+                    /* Ensure the parent mapping is reloaded with the new flags. */
+                    uint32_t virt_addr = (i << 22) | (j << 12);
+                    vmm_flush_tlb(virt_addr);
+
                     /* Copy PTE but mark as read-only and COW */
-                    uint32_t new_pte = (src_pte & ~PAGE_WRITE) | PAGE_COW | PAGE_PRESENT;
+                    uint32_t new_pte =
+                        (src_pte & ~PAGE_WRITE) | PAGE_COW | PAGE_PRESENT;
                     new_pt->entries[j] = new_pte;
 
                     /* Increment reference count for the physical frame */
-                    uint32_t frame_addr = src_pte & 0xFFFFF000;
+                    uint32_t frame_addr = src_pte & 0xFFFFF000U;
                     pmm_ref_frame(frame_addr);
                 }
             }
-            
+
             /* Set new page directory entry */
-            new_dir->entries[i] = new_pt_phys | (src_pde & 0xFFF) | PAGE_PRESENT | PAGE_USER;
+            new_dir->entries[i] =
+                new_pt_phys | (src_pde & 0xFFFU) | PAGE_PRESENT | PAGE_USER;
         }
     }
 

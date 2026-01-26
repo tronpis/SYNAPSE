@@ -130,11 +130,24 @@ void* kmalloc(uint32_t size) {
         uint32_t expand_size = align_size(size + sizeof(heap_block_t), PAGE_SIZE);
         uint32_t new_heap_size = heap_used + heap_free + expand_size;
 
+        uint32_t start_addr = (uint32_t)heap_start + heap_used + heap_free;
+        uint32_t end_addr = (uint32_t)heap_start + new_heap_size;
+
         /* Map new pages */
-        for (uint32_t addr = (uint32_t)heap_start + heap_used + heap_free;
-             addr < (uint32_t)heap_start + new_heap_size;
-             addr += PAGE_SIZE) {
+        uint32_t addr;
+        for (addr = start_addr; addr < end_addr; addr += PAGE_SIZE) {
             uint32_t phys = pmm_alloc_frame();
+            if (phys == 0) {
+                vga_print("[-] Error: Out of memory during heap expand!\n");
+
+                /* Roll back any pages mapped in this expansion. */
+                for (uint32_t rollback = start_addr; rollback < addr;
+                     rollback += PAGE_SIZE) {
+                    vmm_unmap_page(rollback);
+                }
+
+                return 0;
+            }
             vmm_map_page(addr, phys, PAGE_PRESENT | PAGE_WRITE);
         }
 
@@ -144,7 +157,8 @@ void* kmalloc(uint32_t size) {
             last = last->next;
         }
 
-        heap_block_t* new_block = (heap_block_t*)((uint8_t*)heap_start + heap_used + heap_free);
+        heap_block_t* new_block =
+            (heap_block_t*)((uint8_t*)heap_start + heap_used + heap_free);
         new_block->size = expand_size - sizeof(heap_block_t);
         new_block->magic = HEAP_MAGIC;
         new_block->is_free = 1;

@@ -115,12 +115,17 @@ iso: $(ISO_IMAGE)
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
 
+.PHONY: deps
+
+deps:
+	@./configure
+
 # ============================================================================
 # BOOT CODE
 # ============================================================================
 
 # Compile boot assembly
-$(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR)
+$(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR) deps
 	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================================
@@ -128,24 +133,24 @@ $(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR)
 # ============================================================================
 
 # Compile kernel assembly files
-$(BUILD_DIR)/isr.o: $(KERNEL_DIR)/isr.asm | $(BUILD_DIR)
+$(BUILD_DIR)/isr.o: $(KERNEL_DIR)/isr.asm | $(BUILD_DIR) deps
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(BUILD_DIR)/switch.o: $(KERNEL_DIR)/switch.asm | $(BUILD_DIR)
+$(BUILD_DIR)/switch.o: $(KERNEL_DIR)/switch.asm | $(BUILD_DIR) deps
 	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================================
 # KERNEL C FILES (explicit rules to avoid ambiguity)
 # ============================================================================
 
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR) deps
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # ============================================================================
 # LIBRARY FILES
 # ============================================================================
 
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR) deps
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # ============================================================================
