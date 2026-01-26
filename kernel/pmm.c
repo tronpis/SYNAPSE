@@ -33,6 +33,10 @@ static inline uint32_t addr_to_frame(uint32_t addr) {
     return addr / FRAME_SIZE;
 }
 
+static inline uint32_t addr_to_frame_round_up(uint32_t addr) {
+    return (addr + (FRAME_SIZE - 1U)) / FRAME_SIZE;
+}
+
 /* Get address from frame index */
 static inline uint32_t frame_to_addr(uint32_t frame) {
     return frame * FRAME_SIZE;
@@ -138,7 +142,7 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
 
     /* Mark bitmap area as used */
     uint32_t bitmap_start_frame = addr_to_frame(0x00200000U);
-    uint32_t bitmap_end_frame = addr_to_frame(0x00200000U + bitmap_size);
+    uint32_t bitmap_end_frame = addr_to_frame_round_up(0x00200000U + bitmap_size);
     for (uint32_t f = bitmap_start_frame; f < bitmap_end_frame; f++) {
         if (frame_is_free(f) != 0) {
             frame_set_used(f);
@@ -148,8 +152,8 @@ void pmm_init(mem_map_t* mmap, uint32_t mmap_size, uint32_t mmap_desc_size) {
     /* Reserve the early kernel heap region (if configured). */
     if ((kernel_heap_phys != 0U) && (kernel_heap_size != 0U)) {
         uint32_t heap_start_frame = addr_to_frame(kernel_heap_phys);
-        uint32_t heap_end_frame = addr_to_frame(kernel_heap_phys +
-                                                kernel_heap_size);
+        uint32_t heap_end_frame = addr_to_frame_round_up(kernel_heap_phys +
+                                                         kernel_heap_size);
         for (uint32_t f = heap_start_frame; f < heap_end_frame; f++) {
             if (frame_is_free(f) != 0) {
                 frame_set_used(f);

@@ -6,26 +6,51 @@ set -e
 
 echo "SYNAPSE SO: no configuration step is required."
 
-if command -v apt-get >/dev/null 2>&1; then
-    UPDATED=0
-
-    if ! command -v nasm >/dev/null 2>&1; then
-        echo "[configure] Installing nasm..."
-        sudo -n apt-get update
-        UPDATED=1
-        sudo -n apt-get install -y nasm
+try_apt_install() {
+    if ! command -v apt-get >/dev/null 2>&1; then
+        return 1
     fi
 
-    if ! gcc -m32 -x c - -o /tmp/synapse_configure_test32 >/dev/null 2>&1 \
-        <<'EOF'
+    if ! command -v sudo >/dev/null 2>&1; then
+        return 1
+    fi
+
+    if ! sudo -n true >/dev/null 2>&1; then
+        return 1
+    fi
+
+    export DEBIAN_FRONTEND=noninteractive
+
+    if sudo -n apt-get install -y "$@" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    sudo -n apt-get update >/dev/null 2>&1 || true
+    if sudo -n apt-get install -y "$@" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    return 1
+}
+
+if command -v nasm >/dev/null 2>&1; then
+    :
+else
+    echo "[configure] nasm not found; attempting to install..."
+    if ! try_apt_install nasm; then
+        echo "[configure] Warning: unable to install nasm automatically."
+    fi
+fi
+
+if gcc -m32 -x c - -o /tmp/synapse_configure_test32 >/dev/null 2>&1 <<'EOF'
 int main(void) { return 0; }
 EOF
-    then
-        echo "[configure] Installing gcc-multilib (required for -m32)..."
-        if [ "${UPDATED}" -eq 0 ]; then
-            sudo -n apt-get update
-        fi
-        sudo -n apt-get install -y gcc-multilib
+then
+    rm -f /tmp/synapse_configure_test32
+else
+    echo "[configure] 32-bit toolchain not detected; attempting to install gcc-multilib..."
+    if ! try_apt_install gcc-multilib; then
+        echo "[configure] Warning: unable to install gcc-multilib automatically."
     fi
 fi
 
