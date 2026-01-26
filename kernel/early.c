@@ -9,7 +9,13 @@
 
 /* Minimum system requirements */
 #define MIN_MEMORY_KB 4096  /* 4MB minimum */
-#define REQ_CPU_FEATURES (CPU_FEATURE_PSE | CPU_FEATURE_PAE)
+
+/* CPU checks:
+   - CMOV is treated as a hard requirement (i686-class CPU).
+   - PAE/PSE are treated as recommended features and will emit warnings.
+*/
+#define REQ_CPU_FEATURES_FATAL (CPU_FEATURE_CMOV)
+#define REQ_CPU_FEATURES_WARN (CPU_FEATURE_PSE | CPU_FEATURE_PAE)
 
 /* Boot check statistics */
 static int checks_passed = 0;
@@ -82,23 +88,42 @@ int early_run_checks(void) {
 
 /* Check CPU requirements */
 int early_check_cpu(void) {
-    if (!cpu_has_cpuid()) {
+    int warned = 0;
+
+    if (cpu_has_cpuid() == 0) {
         vga_print("\n  ERROR: CPUID not supported\n");
         return BOOT_CHECK_FATAL;
     }
-    
-    /* Check for required features */
-    if (!cpu_has_feature(CPU_FEATURE_FPU)) {
+
+    /* Hard requirements */
+    if ((REQ_CPU_FEATURES_FATAL & CPU_FEATURE_CMOV) != 0U) {
+        if (cpu_has_feature(CPU_FEATURE_CMOV) == 0) {
+            vga_print("\n  ERROR: Missing CMOV (requires i686-class CPU)\n");
+            return BOOT_CHECK_FATAL;
+        }
+    }
+
+    /* Recommended / optional features */
+    if (cpu_has_feature(CPU_FEATURE_FPU) == 0) {
         vga_print("\n  WARNING: No FPU\n");
-        return BOOT_CHECK_WARNING;
+        warned = 1;
     }
-    
-    /* PSE is nice to have but not required */
-    if (!cpu_has_feature(CPU_FEATURE_PSE)) {
-        vga_print("\n  INFO: No PSE (4MB pages)\n");
+
+    if ((REQ_CPU_FEATURES_WARN & CPU_FEATURE_PAE) != 0U) {
+        if (cpu_has_feature(CPU_FEATURE_PAE) == 0) {
+            vga_print("\n  WARNING: No PAE support\n");
+            warned = 1;
+        }
     }
-    
-    return BOOT_CHECK_OK;
+
+    if ((REQ_CPU_FEATURES_WARN & CPU_FEATURE_PSE) != 0U) {
+        if (cpu_has_feature(CPU_FEATURE_PSE) == 0) {
+            vga_print("\n  INFO: No PSE (4MB pages)\n");
+            warned = 1;
+        }
+    }
+
+    return (warned != 0) ? BOOT_CHECK_WARNING : BOOT_CHECK_OK;
 }
 
 /* Check minimum memory */
