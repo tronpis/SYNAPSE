@@ -11,6 +11,7 @@
 #include <kernel/exec.h>
 #include <kernel/wait.h>
 #include <kernel/vfs.h>
+#include <kernel/keyboard.h>
 
 /* System call table */
 static syscall_func_t syscall_table[NUM_SYSCALLS];
@@ -117,17 +118,17 @@ int sys_write(uint32_t fd, uint32_t buffer, uint32_t count) {
     (void)fd; /* File descriptor not used yet */
 
     /* Validate count */
-    if (count == 0) {
+    if (count == 0U) {
         return 0;
     }
-    
+
     /* Reject kernel-space pointers to avoid leaking kernel memory */
-    if (buffer >= 0xC0000000) {
+    if (buffer >= 0xC0000000U) {
         return -1;
     }
 
-    if (count > 4096) {
-        count = 4096;
+    if (count > 4096U) {
+        count = 4096U;
     }
 
     /* Access user buffer safely using temporary mappings */
@@ -187,18 +188,85 @@ int sys_write(uint32_t fd, uint32_t buffer, uint32_t count) {
 
 /* Read from a file descriptor */
 int sys_read(uint32_t fd, uint32_t buffer, uint32_t count) {
-    (void)fd; /* File descriptor not used yet */
-    (void)buffer;
-    (void)count;
+    /* Only basic stdin (fd=0) is supported for now. */
+    if (fd != 0U) {
+        return -1;
+    }
 
-    /* Not implemented yet */
-    return -1;
+    if (count == 0U) {
+        return 0;
+    }
+
+    if (count > 4096U) {
+        count = 4096U;
+    }
+
+    /* Reject kernel-space pointers to avoid corrupting kernel memory */
+    if (buffer >= 0xC0000000U) {
+        return -1;
+    }
+
+    uint32_t bytes_read = 0U;
+    uint32_t user_addr = buffer;
+
+    while (bytes_read < count) {
+        if (keyboard_has_char() == 0) {
+            break;
+        }
+
+        uint32_t user_page = user_addr & 0xFFFFF000U;
+        uint32_t page_offset = user_addr & 0xFFFU;
+
+        uint32_t phys_addr = vmm_get_phys_addr(user_page);
+        if (phys_addr == 0U) {
+            return (bytes_read > 0U) ? (int)bytes_read : -1;
+        }
+
+        int slot = vmm_alloc_temp_slot();
+        if (slot < 0) {
+            return (bytes_read > 0U) ? (int)bytes_read : -1;
+        }
+
+        uint32_t temp_virt = vmm_map_temp_page(phys_addr, slot);
+        if (temp_virt == 0U) {
+            vmm_free_temp_slot(slot);
+            return (bytes_read > 0U) ? (int)bytes_read : -1;
+        }
+
+        uint32_t bytes_in_page = PAGE_SIZE - page_offset;
+        uint32_t bytes_to_copy = count - bytes_read;
+        if (bytes_to_copy > bytes_in_page) {
+            bytes_to_copy = bytes_in_page;
+        }
+
+        char* mapped_buf = (char*)(temp_virt + page_offset);
+        for (uint32_t i = 0U; (i < bytes_to_copy) && (bytes_read < count);
+             i++) {
+            if (keyboard_has_char() == 0) {
+                break;
+            }
+
+            char c = keyboard_get_char();
+            if (c == 0) {
+                break;
+            }
+
+            mapped_buf[i] = c;
+            bytes_read++;
+            user_addr++;
+        }
+
+        vmm_unmap_temp_page(slot);
+        vmm_free_temp_slot(slot);
+    }
+
+    return (int)bytes_read;
 }
 
 /* Open a file */
 int sys_open(uint32_t filename, uint32_t flags, uint32_t mode) {
     /* Validate pointer is in user space */
-    if (filename >= 0xC0000000) {
+    if (filename >= 0xC0000000U) {
         return -1;
     }
 
@@ -223,7 +291,7 @@ int sys_fork(void) {
 /* Execute a new program */
 int sys_exec(uint32_t path, uint32_t argv) {
     /* Validate pointer is in user space */
-    if (path >= 0xC0000000) {
+    if (path >= 0xC0000000U) {
         return -1;
     }
 
@@ -236,7 +304,7 @@ int sys_exec(uint32_t path, uint32_t argv) {
 /* Wait for a process to exit */
 int sys_wait(uint32_t pid, uint32_t status) {
     /* Validate status pointer is in user space */
-    if (status >= 0xC0000000) {
+    if (status >= 0xC0000000U) {
         return -1;
     }
 

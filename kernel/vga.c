@@ -2,6 +2,7 @@
 /* Licensed under GPLv3 */
 
 #include <kernel/vga.h>
+#include <kernel/serial.h>
 
 /* VGA memory buffer */
 volatile unsigned short* vga_buffer = (unsigned short*)0xB8000;
@@ -44,6 +45,10 @@ static void vga_scroll(void) {
 
 /* Put a character at current position */
 void vga_put_char(char c) {
+    if (serial_is_initialized() != 0) {
+        serial_write_char(c);
+    }
+
     if (c == '\n') {
         cursor_x = 0;
         cursor_y++;

@@ -3,7 +3,6 @@
 
 #include <kernel/keyboard.h>
 #include <kernel/io.h>
-#include <kernel/vga.h>
 
 #define KBD_DATA_PORT   0x60U
 #define KBD_STATUS_PORT 0x64U
@@ -103,7 +102,4 @@ void keyboard_irq_handler(void) {
     }
 
     kbd_push_char(c);
-
-    /* Basic feedback until a full input subsystem exists. */
-    vga_put_char(c);
 }
