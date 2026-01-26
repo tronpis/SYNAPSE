@@ -1,8 +1,32 @@
 #!/usr/bin/env bash
-# SYNAPSE SO - configure stub
+# SYNAPSE SO - configure
 # Licensed under GPLv3
 
 set -e
 
 echo "SYNAPSE SO: no configuration step is required."
+
+if command -v apt-get >/dev/null 2>&1; then
+    UPDATED=0
+
+    if ! command -v nasm >/dev/null 2>&1; then
+        echo "[configure] Installing nasm..."
+        sudo -n apt-get update
+        UPDATED=1
+        sudo -n apt-get install -y nasm
+    fi
+
+    if ! gcc -m32 -x c - -o /tmp/synapse_configure_test32 >/dev/null 2>&1 \
+        <<'EOF'
+int main(void) { return 0; }
+EOF
+    then
+        echo "[configure] Installing gcc-multilib (required for -m32)..."
+        if [ "${UPDATED}" -eq 0 ]; then
+            sudo -n apt-get update
+        fi
+        sudo -n apt-get install -y gcc-multilib
+    fi
+fi
+
 echo "Run 'make' to build the kernel, or 'make all' to build the ISO image."

@@ -6,8 +6,12 @@
 
 #include <stdint.h>
 
+/* Memory layout */
+#define KERNEL_VIRT_START 0xC0000000U
+#define KERNEL_PHYS_BASE  0x00100000U
+
 /* Page size is 4KB */
-#define PAGE_SIZE 4096
+#define PAGE_SIZE 4096U
 
 /* Page table entry flags */
 #define PAGE_PRESENT    (1 << 0)

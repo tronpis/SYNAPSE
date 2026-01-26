@@ -6,6 +6,29 @@
 #include <kernel/vga.h>
 #include <kernel/string.h>
 
+static inline uint32_t vmm_cow_get_table_index(uint32_t virt_addr) {
+    return (virt_addr >> 22) & 0x3FFU;
+}
+
+static inline uint32_t vmm_cow_get_page_index(uint32_t virt_addr) {
+    return (virt_addr >> 12) & 0x3FFU;
+}
+
+static inline uint32_t* vmm_cow_get_pte(page_directory_t* pd,
+                                       uint32_t virt_addr) {
+    if (pd == 0) {
+        return 0;
+    }
+
+    uint32_t pde = pd->entries[vmm_cow_get_table_index(virt_addr)];
+    if ((pde & PAGE_PRESENT) == 0U) {
+        return 0;
+    }
+
+    page_table_t* pt = (page_table_t*)((pde & 0xFFFFF000U) + KERNEL_VIRT_START);
+    return &pt->entries[vmm_cow_get_page_index(virt_addr)];
+}
+
 /* Clone page directory for fork() */
 page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
     if (src == 0) {
@@ -74,9 +97,14 @@ page_directory_t* vmm_clone_page_directory(page_directory_t* src) {
 
 /* Handle COW page fault */
 int vmm_handle_cow_fault(uint32_t fault_addr) {
-    uint32_t* pte = get_pte(current_directory, fault_addr);
-    
-    if (pte == 0 || !(*pte & PAGE_PRESENT) || !(*pte & PAGE_COW)) {
+    page_directory_t* current_dir = vmm_get_current_directory();
+    uint32_t* pte = vmm_cow_get_pte(current_dir, fault_addr);
+
+    if (pte == 0) {
+        return -1;
+    }
+
+    if (((*pte & PAGE_PRESENT) == 0U) || ((*pte & PAGE_COW) == 0U)) {
         return -1;  /* Not a COW page */
     }
     
@@ -141,13 +169,18 @@ int vmm_handle_cow_fault(uint32_t fault_addr) {
 
 /* Check if page is COW */
 int vmm_is_page_cow(uint32_t virt_addr) {
-    uint32_t* pte = get_pte(current_directory, virt_addr);
-    
-    if (pte == 0 || !(*pte & PAGE_PRESENT)) {
+    page_directory_t* current_dir = vmm_get_current_directory();
+    uint32_t* pte = vmm_cow_get_pte(current_dir, virt_addr);
+
+    if (pte == 0) {
         return 0;
     }
-    
-    return (*pte & PAGE_COW) ? 1 : 0;
+
+    if (((*pte) & PAGE_PRESENT) == 0U) {
+        return 0;
+    }
+
+    return ((*pte) & PAGE_COW) != 0U;
 }
 
 /* Get VMM statistics */
@@ -164,33 +197,39 @@ void vmm_get_stats(vmm_stats_t* stats) {
     stats->shared_pages = 0;
     
     /* Count pages in current directory */
-    for (uint32_t i = 0; i < 1024; i++) {
-        uint32_t pde = current_directory->entries[i];
-        
-        if (pde & PAGE_PRESENT) {
-            page_table_t* pt = (page_table_t*)((pde & 0xFFFFF000) + KERNEL_VIRT_START);
+    page_directory_t* current_dir = vmm_get_current_directory();
+    if (current_dir == 0) {
+        return;
+    }
+
+    for (uint32_t i = 0; i < 1024U; i++) {
+        uint32_t pde = current_dir->entries[i];
+
+        if ((pde & PAGE_PRESENT) != 0U) {
+            page_table_t* pt =
+                (page_table_t*)((pde & 0xFFFFF000U) + KERNEL_VIRT_START);
             
-            for (uint32_t j = 0; j < 1024; j++) {
+            for (uint32_t j = 0; j < 1024U; j++) {
                 uint32_t pte = pt->entries[j];
-                
-                if (pte & PAGE_PRESENT) {
+
+                if ((pte & PAGE_PRESENT) != 0U) {
                     stats->total_pages++;
                     stats->used_pages++;
-                    
-                    if (pte & PAGE_COW) {
+
+                    if ((pte & PAGE_COW) != 0U) {
                         stats->cow_pages++;
                     }
-                    
+
                     /* Check if frame is shared (refcount > 1) */
-                    uint32_t frame_addr = pte & 0xFFFFF000;
-                    if (pmm_get_ref_count(frame_addr) > 1) {
+                    uint32_t frame_addr = pte & 0xFFFFF000U;
+                    if (pmm_get_ref_count(frame_addr) > 1U) {
                         stats->shared_pages++;
                     }
                 }
             }
         }
     }
-    
+
     /* Calculate free pages */
-    stats->free_pages = (1024 * 1024) - stats->used_pages;
+    stats->free_pages = (1024U * 1024U) - stats->used_pages;
 }

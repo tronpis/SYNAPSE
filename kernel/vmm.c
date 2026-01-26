@@ -15,10 +15,14 @@ static page_directory_t* current_directory;
 static uint32_t kernel_pd_phys;
 
 /* Kernel virtual address space starts at 3GB */
-#define KERNEL_VIRT_START 0xC0000000
+#ifndef KERNEL_VIRT_START
+#define KERNEL_VIRT_START 0xC0000000U
+#endif
 
 /* Physical memory mapped at kernel start */
-#define KERNEL_PHYS_BASE 0x100000
+#ifndef KERNEL_PHYS_BASE
+#define KERNEL_PHYS_BASE 0x00100000U
+#endif
 
 /* Get page table index from virtual address */
 static inline uint32_t get_table_index(uint32_t virt_addr) {

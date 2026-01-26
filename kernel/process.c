@@ -9,6 +9,7 @@
 #include <kernel/vga.h>
 #include <kernel/vmm.h>
 #include <kernel/const.h>
+#include <kernel/scheduler.h>
 
 #define IRQ0_VECTOR       32
 
