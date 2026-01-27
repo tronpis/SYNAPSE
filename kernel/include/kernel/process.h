@@ -64,6 +64,10 @@ process_t* process_create(const char* name, uint32_t flags,
                           process_entry_t entry);
 process_t* process_create_current(const char* name);
 void process_destroy(process_t* proc);
+
+/* Insert a process into the global process list. */
+void process_add_to_list(process_t* proc);
+
 process_t* process_get_current(void);
 void process_set_current(process_t* proc);
 process_t* process_get_list(void);

@@ -54,6 +54,19 @@ void vga_put_char(char c) {
         cursor_y++;
     } else if (c == '\r') {
         cursor_x = 0;
+    } else if (c == '\b') {
+        if (cursor_x > 0) {
+            cursor_x--;
+        } else if (cursor_y > 0) {
+            cursor_y--;
+            cursor_x = VGA_WIDTH - 1;
+        } else {
+            return;
+        }
+
+        int offset = cursor_y * VGA_WIDTH + cursor_x;
+        vga_buffer[offset] = (unsigned short)' ' | (current_color << 8);
+        return;
     } else if (c == '\t') {
         cursor_x = (cursor_x + 8) & ~7;
     } else if (c >= ' ') {

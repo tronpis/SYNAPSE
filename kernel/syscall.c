@@ -16,6 +16,88 @@
 /* System call table */
 static syscall_func_t syscall_table[NUM_SYSCALLS];
 
+static int sys_exit_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_exit(arg1);
+}
+
+static int sys_write_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                             uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_write(arg1, arg2, arg3);
+}
+
+static int sys_read_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_read(arg1, arg2, arg3);
+}
+
+static int sys_open_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_open(arg1, arg2, arg3);
+}
+
+static int sys_close_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                             uint32_t arg4, uint32_t arg5) {
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_close(arg1);
+}
+
+static int sys_fork_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_fork();
+}
+
+static int sys_exec_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_exec(arg1, arg2);
+}
+
+static int sys_wait_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_wait(arg1, arg2);
+}
+
+static int sys_getpid_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                              uint32_t arg4, uint32_t arg5) {
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_getpid();
+}
+
+static int sys_lseek_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                             uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_lseek((int)arg1, (int)arg2, (int)arg3);
+}
+
 /* Initialize system call interface */
 void syscall_init(void) {
     vga_print("[+] Initializing System Call Interface...\n");
@@ -26,16 +108,16 @@ void syscall_init(void) {
     }
 
     /* Register system calls */
-    syscall_register(SYS_EXIT, (syscall_func_t)sys_exit);
-    syscall_register(SYS_WRITE, (syscall_func_t)sys_write);
-    syscall_register(SYS_READ, (syscall_func_t)sys_read);
-    syscall_register(SYS_OPEN, (syscall_func_t)sys_open);
-    syscall_register(SYS_CLOSE, (syscall_func_t)sys_close);
-    syscall_register(SYS_FORK, (syscall_func_t)sys_fork);
-    syscall_register(SYS_EXEC, (syscall_func_t)sys_exec);
-    syscall_register(SYS_WAIT, (syscall_func_t)sys_wait);
-    syscall_register(SYS_GETPID, (syscall_func_t)sys_getpid);
-    syscall_register(SYS_LSEEK, (syscall_func_t)sys_lseek);
+    syscall_register(SYS_EXIT, sys_exit_wrapper);
+    syscall_register(SYS_WRITE, sys_write_wrapper);
+    syscall_register(SYS_READ, sys_read_wrapper);
+    syscall_register(SYS_OPEN, sys_open_wrapper);
+    syscall_register(SYS_CLOSE, sys_close_wrapper);
+    syscall_register(SYS_FORK, sys_fork_wrapper);
+    syscall_register(SYS_EXEC, sys_exec_wrapper);
+    syscall_register(SYS_WAIT, sys_wait_wrapper);
+    syscall_register(SYS_GETPID, sys_getpid_wrapper);
+    syscall_register(SYS_LSEEK, sys_lseek_wrapper);
 
     vga_print("    System calls registered\n");
 }

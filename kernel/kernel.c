@@ -19,8 +19,10 @@
 #include <kernel/early.h>
 #include <kernel/serial.h>
 #include <kernel/keyboard.h>
+#include <kernel/console.h>
 #include <kernel/vfs.h>
 #include <kernel/ramfs.h>
+#include <kernel/string.h>
 
 /* Multiboot information structure */
 typedef struct {
@@ -64,44 +66,127 @@ static void demo_syscalls(void) {
     sys_exit(0);
 }
 
+static void shell_help(void) {
+    vga_print("Commands:\n");
+    vga_print("  help        - Show this help\n");
+    vga_print("  ticks       - Show timer ticks\n");
+    vga_print("  ps          - List processes\n");
+    vga_print("  fork        - Run fork demo\n");
+    vga_print("  cat <path>  - Print file (ramfs/vfs)\n");
+    vga_print("  clear       - Clear screen\n");
+}
+
+static void shell_ps(void) {
+    process_t* start = process_get_list();
+    if (start == 0) {
+        vga_print("[ps] no processes\n");
+        return;
+    }
+
+    vga_print("PID  STATE  NAME\n");
+
+    process_t* p = start;
+    do {
+        vga_print_dec(p->pid);
+        vga_print("    ");
+        vga_print_dec(p->state);
+        vga_print("      ");
+        vga_print(p->name);
+        vga_print("\n");
+        p = p->next;
+    } while (p != 0 && p != start);
+}
+
+static void shell_cat(const char* path) {
+    if (path == 0 || path[0] == '\0') {
+        vga_print("usage: cat <path>\n");
+        return;
+    }
+
+    int fd = vfs_open(path, 0, 0);
+    if (fd < 0) {
+        vga_print("cat: cannot open ");
+        vga_print(path);
+        vga_print("\n");
+        return;
+    }
+
+    char buf[129];
+    while (1) {
+        int n = vfs_read(fd, buf, 128);
+        if (n <= 0) {
+            break;
+        }
+        buf[(uint32_t)n] = '\0';
+        vga_print(buf);
+    }
+
+    vfs_close(fd);
+    vga_print("\n");
+}
+
 static void shell_process(void) {
-    /* Simple interactive shell with fork/exec */
-    vga_print("\n[+] SYNAPSE SO Shell v0.2\n");
+    vga_print("\n[+] SYNAPSE SO Shell v0.3\n");
     vga_print("[+] Type 'help' for commands\n\n");
+
+    char line[128];
 
     while (1) {
         vga_print("[SHELL] $ ");
+        console_read_line(line, sizeof(line));
 
-        /* Delay to simulate waiting for input */
-        for (uint32_t i = 0; i < 50000000; i++) {
-            __asm__ __volatile__("nop");
+        if (strcmp(line, "") == 0) {
+            continue;
         }
 
-        /* For now, just demonstrate fork capability */
-        vga_print("\n[SHELL] Running fork demo...\n");
+        if (strcmp(line, "help") == 0) {
+            shell_help();
+            continue;
+        }
 
-        pid_t pid = do_fork();
-        if (pid == 0) {
-            /* Child process */
-            vga_print("  [CHILD] I am the child process!\n");
-            sys_exit(0);
-        } else if (pid > 0) {
-            /* Parent process */
-            vga_print("  [PARENT] Child PID: ");
-            vga_print_dec(pid);
+        if (strcmp(line, "clear") == 0) {
+            vga_clear_screen();
+            continue;
+        }
+
+        if (strcmp(line, "ticks") == 0) {
+            vga_print("ticks=");
+            vga_print_dec(timer_get_ticks());
             vga_print("\n");
-
-            /* Wait for child */
-            do_wait(-1, 0);
-            vga_print("  [PARENT] Child exited\n");
-        } else {
-            vga_print("  [SHELL] Fork failed\n");
+            continue;
         }
 
-        /* Small delay between commands */
-        for (uint32_t i = 0; i < 100000000; i++) {
-            __asm__ __volatile__("nop");
+        if (strcmp(line, "ps") == 0) {
+            shell_ps();
+            continue;
         }
+
+        if (strcmp(line, "fork") == 0) {
+            vga_print("[SHELL] Running fork demo...\n");
+            pid_t pid = do_fork();
+            if (pid == 0) {
+                vga_print("  [CHILD] I am the child process!\n");
+                sys_exit(0);
+            } else if (pid > 0) {
+                vga_print("  [PARENT] Child PID: ");
+                vga_print_dec(pid);
+                vga_print("\n");
+                do_wait(-1, 0);
+                vga_print("  [PARENT] Child exited\n");
+            } else {
+                vga_print("  [SHELL] Fork failed\n");
+            }
+            continue;
+        }
+
+        if (strncmp(line, "cat ", 4) == 0) {
+            shell_cat(line + 4);
+            continue;
+        }
+
+        vga_print("unknown command: ");
+        vga_print(line);
+        vga_print("\n");
     }
 }
 
@@ -195,6 +280,7 @@ void kernel_main(unsigned int magic, multiboot_info_t* mbi) {
     /* Initialize basic drivers */
     serial_init(SERIAL_COM1_BASE);
     keyboard_init();
+    console_init();
 
     /* Phase 1 complete */
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);

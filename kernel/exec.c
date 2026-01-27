@@ -126,23 +126,3 @@ int do_exec(const char* path, char* const argv[]) {
     return 0;
 }
 
-/* Destroy a page directory and all its user pages */
-void vmm_destroy_page_directory(page_directory_t* pd) {
-    if (pd == 0) {
-        return;
-    }
-
-    /* Free user space page tables (first 768 entries) */
-    for (uint32_t i = 0; i < 768U; i++) {
-        uint32_t pde = pd->entries[i];
-        if (pde & PAGE_PRESENT) {
-            uint32_t pt_phys = pde & 0xFFFFF000;
-            /* Free page table */
-            pmm_free_frame(pt_phys);
-        }
-    }
-
-    /* Free page directory itself */
-    uint32_t pd_phys = (uint32_t)pd - KERNEL_VIRT_START;
-    pmm_free_frame(pd_phys);
-}
