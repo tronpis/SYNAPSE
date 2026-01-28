@@ -63,6 +63,22 @@ void serial_write_char(char c) {
         serial_write_char('\r');
     }
 
+    if (c == '\b') {
+        while (serial_tx_ready() == 0) {
+            __asm__ __volatile__("pause");
+        }
+        outb((unsigned short)(serial_base + SERIAL_REG_DATA), (unsigned char)'\b');
+        while (serial_tx_ready() == 0) {
+            __asm__ __volatile__("pause");
+        }
+        outb((unsigned short)(serial_base + SERIAL_REG_DATA), (unsigned char)' ');
+        while (serial_tx_ready() == 0) {
+            __asm__ __volatile__("pause");
+        }
+        outb((unsigned short)(serial_base + SERIAL_REG_DATA), (unsigned char)'\b');
+        return;
+    }
+
     while (serial_tx_ready() == 0) {
         __asm__ __volatile__("pause");
     }

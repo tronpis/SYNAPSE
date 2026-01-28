@@ -13,6 +13,7 @@
 #define KBD_SC_RSHIFT_PRESS  0x36U
 #define KBD_SC_LSHIFT_RELEASE 0xAAU
 #define KBD_SC_RSHIFT_RELEASE 0xB6U
+#define KBD_SC_CAPS_LOCK      0x3AU
 
 #define KBD_BUF_SIZE 128U
 
@@ -20,6 +21,7 @@ static volatile char kbd_buf[KBD_BUF_SIZE];
 static volatile uint32_t kbd_head = 0U;
 static volatile uint32_t kbd_tail = 0U;
 static volatile uint8_t shift_down = 0U;
+static volatile uint8_t caps_lock = 0U;
 
 static const char keymap[128] = {
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=',
@@ -75,6 +77,7 @@ void keyboard_init(void) {
     kbd_head = 0U;
     kbd_tail = 0U;
     shift_down = 0U;
+    caps_lock = 0U;
 
     kbd_flush_output_buffer();
 }
@@ -96,7 +99,20 @@ void keyboard_irq_handler(void) {
         return;
     }
 
+    if (scancode == KBD_SC_CAPS_LOCK) {
+        caps_lock = (caps_lock == 0U) ? 1U : 0U;
+        return;
+    }
+
     char c = shift_down ? keymap_shift[scancode] : keymap[scancode];
+
+    if (caps_lock != 0U) {
+        if (c >= 'a' && c <= 'z') {
+            c = (char)(c - 'a' + 'A');
+        } else if (c >= 'A' && c <= 'Z') {
+            c = (char)(c - 'A' + 'a');
+        }
+    }
     if (c == 0) {
         return;
     }

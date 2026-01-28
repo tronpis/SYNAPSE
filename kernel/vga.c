@@ -3,6 +3,7 @@
 
 #include <kernel/vga.h>
 #include <kernel/serial.h>
+#include <kernel/io.h>
 
 /* VGA memory buffer */
 volatile unsigned short* vga_buffer = (unsigned short*)0xB8000;
@@ -14,6 +15,15 @@ static int cursor_y = 0;
 /* Current color scheme */
 static unsigned char current_color = VGA_COLOR_LIGHT_GREY;
 
+static void vga_update_hw_cursor(void) {
+    unsigned int pos = (unsigned int)(cursor_y * VGA_WIDTH + cursor_x);
+
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (unsigned char)(pos & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (unsigned char)((pos >> 8) & 0xFF));
+}
+
 /* Clear the screen */
 void vga_clear_screen(void) {
     for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
@@ -21,6 +31,7 @@ void vga_clear_screen(void) {
     }
     cursor_x = 0;
     cursor_y = 0;
+    vga_update_hw_cursor();
 }
 
 /* Set text color */
@@ -41,6 +52,7 @@ static void vga_scroll(void) {
     }
 
     cursor_y = VGA_HEIGHT - 1;
+    vga_update_hw_cursor();
 }
 
 /* Put a character at current position */
@@ -84,10 +96,16 @@ void vga_put_char(char c) {
     if (cursor_y >= VGA_HEIGHT) {
         vga_scroll();
     }
+
+    vga_update_hw_cursor();
 }
 
 /* Print a null-terminated string */
 void vga_print(const char* str) {
+    if (str == 0) {
+        return;
+    }
+
     while (*str) {
         vga_put_char(*str++);
     }

@@ -57,7 +57,7 @@ void enter_usermode(uint32_t entry_point, uint32_t user_stack) {
 /* Simple user mode test code
  * This code will be copied to user space and executed
  */
-static void user_test_code(void) {
+static void __attribute__((unused)) user_test_code(void) {
     /* This function runs in user mode (ring 3) */
     
     /* Test syscall: write a message */
@@ -99,7 +99,7 @@ static void user_test_code(void) {
 }
 
 /* Marker to find end of user code */
-static void user_test_code_end(void) {
+static void __attribute__((unused)) user_test_code_end(void) {
     /* This is just a marker, not executed */
 }
 
