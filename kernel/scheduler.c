@@ -108,6 +108,19 @@ registers_t* scheduler_tick(registers_t* regs) {
     unsigned int flags;
     asm volatile("pushf; pop %0; cli" : "=r"(flags) :: "memory");
 
+    /* Wake up sleeping processes whose wake_tick has passed */
+    process_check_sleeping();
+
+    /* Check pending signals for all processes */
+    if (process_list != 0) {
+        process_t* p = process_list;
+        process_t* start = p;
+        do {
+            process_check_signals(p);
+            p = p->next;
+        } while (p != 0 && p != start);
+    }
+
     process_t* current = process_get_current();
 
     /* If the recorded current process is not runnable (e.g. blocked/stopped),

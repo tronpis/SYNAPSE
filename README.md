@@ -65,6 +65,19 @@ El kernel actual incluye:
 - Integración completa con VFS y syscalls
 - Pendientes: driver de disco, filesystem ext2, directorios
 
+**Mejoras v0.4.0** ✅ COMPLETADAS (Enero 2025) - Syscalls Extendidos
+El kernel v0.4.0 incluye:
+- 22 nuevos system calls implementados
+- Signal handling completo (SIGTERM, SIGKILL, SIGSTOP, etc.)
+- Sleep/wake management para procesos
+- brk/sbrk para gestión de heap de procesos
+- UID/GID management con getuid/setuid
+- Working directory con chdir/getcwd
+- sysinfo syscall con estadísticas completas del sistema
+- Shell mejorado con nuevos comandos: uptime, mem, sysinfo, kill, sleep, pwd, cd, reboot, halt
+- Timer mejorado con uptime y sleep
+- Scheduler mejorado con señales y sleep integrados
+
 El repositorio contiene documentación completa, código fuente del kernel, y herramientas para construir y ejecutar el sistema operativo.
 
 ## Construcción y Ejecución

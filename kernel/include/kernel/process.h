@@ -17,6 +17,17 @@ typedef struct process process_t;
 /* Global process list (extern for scheduler access) */
 extern process_t* process_list;
 
+/* Signal handler type */
+typedef void (*signal_handler_t)(int);
+
+/* Default signal handlers */
+#define SIG_DFL ((signal_handler_t)0)
+#define SIG_IGN ((signal_handler_t)1)
+#define SIG_ERR ((signal_handler_t)-1)
+
+/* Maximum number of signals */
+#define NSIG 32
+
 /* Process Control Block */
 typedef struct process {
     /* Process identification */
@@ -32,6 +43,7 @@ typedef struct process {
     uint32_t heap_end;
     uint32_t stack_start;
     uint32_t stack_end;
+    uint32_t brk;           /* Program break (heap top) */
 
     /* CPU context */
     uint32_t esp;
@@ -54,6 +66,22 @@ typedef struct process {
 
     /* Time quantum remaining */
     uint32_t quantum;
+
+    /* User/Group IDs */
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t euid;
+    uint32_t egid;
+
+    /* Signal handling */
+    uint32_t pending_signals;
+    signal_handler_t signal_handlers[NSIG];
+
+    /* Current working directory */
+    char cwd[256];
+
+    /* Sleep/wake management */
+    uint32_t wake_tick;     /* Tick at which process should wake */
 } process_t;
 
 typedef void (*process_entry_t)(void);
@@ -96,5 +124,33 @@ void process_set_name(process_t* proc, const char* name);
 
 /* Idle process */
 void idle_process(void);
+
+/* Signal handling */
+int process_send_signal(process_t* proc, int signum);
+signal_handler_t process_set_signal_handler(process_t* proc, int signum, 
+                                            signal_handler_t handler);
+void process_check_signals(process_t* proc);
+
+/* User/Group ID management */
+uint32_t process_get_uid(process_t* proc);
+void process_set_uid(process_t* proc, uint32_t uid);
+uint32_t process_get_gid(process_t* proc);
+void process_set_gid(process_t* proc, uint32_t gid);
+
+/* Program break (brk/sbrk) */
+uint32_t process_brk(process_t* proc, uint32_t addr);
+int32_t process_sbrk(process_t* proc, int32_t increment);
+
+/* Working directory */
+const char* process_get_cwd(process_t* proc);
+int process_set_cwd(process_t* proc, const char* path);
+
+/* Sleep management */
+void process_sleep_until(process_t* proc, uint32_t wake_tick);
+void process_check_sleeping(void);
+
+/* Process counting */
+uint32_t process_count_total(void);
+uint32_t process_count_running(void);
 
 #endif /* KERNEL_PROCESS_H */

@@ -49,6 +49,9 @@ uint32_t pmm_get_free_frames(void);
 /* Get number of used frames */
 uint32_t pmm_get_used_frames(void);
 
+/* Get total number of frames */
+uint32_t pmm_get_total_frames(void);
+
 /* Initialize kernel heap (uses physical memory directly) */
 void pmm_init_kernel_heap(uint32_t start, uint32_t size);
 
