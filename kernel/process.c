@@ -128,6 +128,24 @@ process_t* process_create_current(const char* name) {
     proc->exit_code = 0;
     proc->priority = PRIORITY_HIGH;  /* Kernel processes get high priority */
     proc->quantum = 0;
+    proc->brk = 0;
+
+    /* Initialize UID/GID to root for kernel */
+    proc->uid = proc->gid = 0;
+    proc->euid = proc->egid = 0;
+
+    /* Initialize signal handling */
+    proc->pending_signals = 0;
+    for (int i = 0; i < NSIG; i++) {
+        proc->signal_handlers[i] = SIG_DFL;
+    }
+
+    /* Initialize working directory */
+    proc->cwd[0] = '/';
+    proc->cwd[1] = '\0';
+
+    /* Initialize sleep management */
+    proc->wake_tick = 0;
 
     if (name != 0) {
         strncpy(proc->name, name, 31);
@@ -167,6 +185,36 @@ process_t* process_create(const char* name, uint32_t flags,
 
     proc->heap_start = 0;
     proc->heap_end = 0;
+    proc->brk = 0;
+
+    /* Inherit UID/GID from parent or default to 0 */
+    if (current_process != 0) {
+        proc->uid = current_process->uid;
+        proc->gid = current_process->gid;
+        proc->euid = current_process->euid;
+        proc->egid = current_process->egid;
+    } else {
+        proc->uid = proc->gid = 0;
+        proc->euid = proc->egid = 0;
+    }
+
+    /* Initialize signal handling */
+    proc->pending_signals = 0;
+    for (int i = 0; i < NSIG; i++) {
+        proc->signal_handlers[i] = SIG_DFL;
+    }
+
+    /* Inherit working directory from parent or default to "/" */
+    if (current_process != 0 && current_process->cwd[0] != '\0') {
+        strncpy(proc->cwd, current_process->cwd, 255);
+        proc->cwd[255] = '\0';
+    } else {
+        proc->cwd[0] = '/';
+        proc->cwd[1] = '\0';
+    }
+
+    /* Initialize sleep management */
+    proc->wake_tick = 0;
 
     if (name != 0) {
         strncpy(proc->name, name, 31);
@@ -394,4 +442,319 @@ void idle_process(void) {
     while (1) {
         __asm__ volatile("hlt");
     }
+}
+
+/* ============================================================================
+ * Signal Handling
+ * ============================================================================ */
+
+/* Send a signal to a process */
+int process_send_signal(process_t* proc, int signum) {
+    if (proc == 0 || signum < 1 || signum >= NSIG) {
+        return -1;
+    }
+
+    /* Set the signal as pending */
+    proc->pending_signals |= (1U << signum);
+
+    /* If process is blocked/sleeping, wake it for signal delivery */
+    if (proc->state == PROC_STATE_BLOCKED) {
+        proc->state = PROC_STATE_READY;
+    }
+
+    return 0;
+}
+
+/* Set signal handler for a process */
+signal_handler_t process_set_signal_handler(process_t* proc, int signum,
+                                            signal_handler_t handler) {
+    if (proc == 0 || signum < 1 || signum >= NSIG) {
+        return SIG_ERR;
+    }
+
+    /* SIGKILL and SIGSTOP cannot be caught or ignored */
+    if (signum == 9 || signum == 19) {
+        return SIG_ERR;
+    }
+
+    signal_handler_t old_handler = proc->signal_handlers[signum];
+    proc->signal_handlers[signum] = handler;
+    return old_handler;
+}
+
+/* Check and handle pending signals */
+void process_check_signals(process_t* proc) {
+    if (proc == 0 || proc->pending_signals == 0) {
+        return;
+    }
+
+    for (int sig = 1; sig < NSIG; sig++) {
+        if (!(proc->pending_signals & (1U << sig))) {
+            continue;
+        }
+
+        /* Clear the pending signal */
+        proc->pending_signals &= ~(1U << sig);
+
+        /* Handle SIGKILL - always terminates */
+        if (sig == 9) {
+            proc->state = PROC_STATE_ZOMBIE;
+            proc->exit_code = 128 + sig;
+            return;
+        }
+
+        /* Handle SIGSTOP - always stops */
+        if (sig == 19) {
+            proc->state = PROC_STATE_STOPPED;
+            return;
+        }
+
+        /* Handle SIGCONT - resume if stopped */
+        if (sig == 18) {
+            if (proc->state == PROC_STATE_STOPPED) {
+                proc->state = PROC_STATE_READY;
+            }
+            continue;
+        }
+
+        /* Get the signal handler */
+        signal_handler_t handler = proc->signal_handlers[sig];
+
+        if (handler == SIG_IGN) {
+            /* Signal is ignored */
+            continue;
+        }
+
+        if (handler == SIG_DFL || handler == 0) {
+            /* Default action - terminate for most signals */
+            switch (sig) {
+                case 1:  /* SIGHUP */
+                case 2:  /* SIGINT */
+                case 3:  /* SIGQUIT */
+                case 4:  /* SIGILL */
+                case 6:  /* SIGABRT */
+                case 8:  /* SIGFPE */
+                case 11: /* SIGSEGV */
+                case 13: /* SIGPIPE */
+                case 15: /* SIGTERM */
+                    proc->state = PROC_STATE_ZOMBIE;
+                    proc->exit_code = 128 + (uint32_t)sig;
+                    return;
+
+                case 17: /* SIGCHLD - default is ignore */
+                default:
+                    /* Ignore */
+                    break;
+            }
+        }
+
+        /* TODO: User-defined signal handlers require user mode support */
+    }
+}
+
+/* ============================================================================
+ * User/Group ID Management
+ * ============================================================================ */
+
+uint32_t process_get_uid(process_t* proc) {
+    return (proc != 0) ? proc->uid : 0;
+}
+
+void process_set_uid(process_t* proc, uint32_t uid) {
+    if (proc != 0) {
+        proc->uid = uid;
+        proc->euid = uid;
+    }
+}
+
+uint32_t process_get_gid(process_t* proc) {
+    return (proc != 0) ? proc->gid : 0;
+}
+
+void process_set_gid(process_t* proc, uint32_t gid) {
+    if (proc != 0) {
+        proc->gid = gid;
+        proc->egid = gid;
+    }
+}
+
+/* ============================================================================
+ * Program Break (brk/sbrk)
+ * ============================================================================ */
+
+uint32_t process_brk(process_t* proc, uint32_t addr) {
+    if (proc == 0) {
+        return 0;
+    }
+
+    /* Initialize brk if not set */
+    if (proc->brk == 0) {
+        proc->brk = proc->heap_end > 0 ? proc->heap_end : 0x10000000;
+    }
+
+    /* If addr is 0, just return current brk */
+    if (addr == 0) {
+        return proc->brk;
+    }
+
+    /* Validate new address */
+    if (addr < proc->heap_start && proc->heap_start != 0) {
+        return proc->brk;  /* Cannot shrink below heap start */
+    }
+
+    /* Don't allow growing into stack */
+    if (addr >= proc->stack_start && proc->stack_start != 0) {
+        return proc->brk;
+    }
+
+    /* Update brk */
+    proc->brk = addr;
+    return proc->brk;
+}
+
+int32_t process_sbrk(process_t* proc, int32_t increment) {
+    if (proc == 0) {
+        return -1;
+    }
+
+    /* Initialize brk if not set */
+    if (proc->brk == 0) {
+        proc->brk = proc->heap_end > 0 ? proc->heap_end : 0x10000000;
+    }
+
+    uint32_t old_brk = proc->brk;
+    uint32_t new_brk;
+
+    if (increment >= 0) {
+        new_brk = old_brk + (uint32_t)increment;
+        /* Check for overflow */
+        if (new_brk < old_brk) {
+            return -1;
+        }
+    } else {
+        uint32_t abs_inc = (uint32_t)(-increment);
+        if (abs_inc > old_brk) {
+            return -1;  /* Underflow */
+        }
+        new_brk = old_brk - abs_inc;
+    }
+
+    /* Don't allow growing into stack */
+    if (new_brk >= proc->stack_start && proc->stack_start != 0) {
+        return -1;
+    }
+
+    proc->brk = new_brk;
+    return (int32_t)old_brk;
+}
+
+/* ============================================================================
+ * Working Directory
+ * ============================================================================ */
+
+const char* process_get_cwd(process_t* proc) {
+    if (proc == 0) {
+        return "/";
+    }
+
+    /* Return default if not set */
+    if (proc->cwd[0] == '\0') {
+        return "/";
+    }
+
+    return proc->cwd;
+}
+
+int process_set_cwd(process_t* proc, const char* path) {
+    if (proc == 0 || path == 0) {
+        return -1;
+    }
+
+    /* Validate path length */
+    uint32_t len = strlen(path);
+    if (len >= 255) {
+        return -1;
+    }
+
+    strncpy(proc->cwd, path, 255);
+    proc->cwd[255] = '\0';
+    return 0;
+}
+
+/* ============================================================================
+ * Sleep Management
+ * ============================================================================ */
+
+void process_sleep_until(process_t* proc, uint32_t wake_tick) {
+    if (proc == 0) {
+        return;
+    }
+
+    proc->wake_tick = wake_tick;
+    proc->state = PROC_STATE_BLOCKED;
+}
+
+void process_check_sleeping(void) {
+    /* This function is called from the scheduler tick to wake sleeping procs */
+    if (process_list == 0) {
+        return;
+    }
+
+    /* Import timer_get_ticks - forward declaration to avoid circular deps */
+    extern uint32_t timer_get_ticks(void);
+    uint32_t current_tick = timer_get_ticks();
+
+    process_t* proc = process_list;
+    process_t* start = proc;
+
+    do {
+        if (proc->state == PROC_STATE_BLOCKED && proc->wake_tick != 0) {
+            if (current_tick >= proc->wake_tick) {
+                proc->wake_tick = 0;
+                proc->state = PROC_STATE_READY;
+            }
+        }
+        proc = proc->next;
+    } while (proc != 0 && proc != start);
+}
+
+/* ============================================================================
+ * Process Counting
+ * ============================================================================ */
+
+uint32_t process_count_total(void) {
+    if (process_list == 0) {
+        return 0;
+    }
+
+    uint32_t count = 0;
+    process_t* proc = process_list;
+    process_t* start = proc;
+
+    do {
+        count++;
+        proc = proc->next;
+    } while (proc != 0 && proc != start);
+
+    return count;
+}
+
+uint32_t process_count_running(void) {
+    if (process_list == 0) {
+        return 0;
+    }
+
+    uint32_t count = 0;
+    process_t* proc = process_list;
+    process_t* start = proc;
+
+    do {
+        if (proc->state == PROC_STATE_RUNNING || 
+            proc->state == PROC_STATE_READY) {
+            count++;
+        }
+        proc = proc->next;
+    } while (proc != 0 && proc != start);
+
+    return count;
 }

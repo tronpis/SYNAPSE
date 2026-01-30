@@ -245,6 +245,11 @@ uint32_t pmm_get_used_frames(void) {
     return used_frames;
 }
 
+/* Get total number of frames */
+uint32_t pmm_get_total_frames(void) {
+    return total_frames;
+}
+
 /* Initialize simple kernel heap for pre-paging allocations */
 void pmm_init_kernel_heap(uint32_t start, uint32_t size) {
     kernel_heap_phys = start;
