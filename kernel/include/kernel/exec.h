@@ -6,11 +6,9 @@
 
 #include <stdint.h>
 #include <kernel/const.h>
+#include <kernel/vmm.h>
 
 /* Exec system call implementation */
 int do_exec(const char* path, char* const argv[]);
-
-/* Destroy a page directory and free its pages */
-void vmm_destroy_page_directory(void* pd);
 
 #endif /* KERNEL_EXEC_H */

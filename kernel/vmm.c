@@ -15,10 +15,14 @@ static page_directory_t* current_directory;
 static uint32_t kernel_pd_phys;
 
 /* Kernel virtual address space starts at 3GB */
-#define KERNEL_VIRT_START 0xC0000000
+#ifndef KERNEL_VIRT_START
+#define KERNEL_VIRT_START 0xC0000000U
+#endif
 
 /* Physical memory mapped at kernel start */
-#define KERNEL_PHYS_BASE 0x100000
+#ifndef KERNEL_PHYS_BASE
+#define KERNEL_PHYS_BASE 0x00100000U
+#endif
 
 /* Get page table index from virtual address */
 static inline uint32_t get_table_index(uint32_t virt_addr) {
@@ -194,6 +198,42 @@ page_directory_t* vmm_create_page_directory(void) {
     }
 
     return pd;
+}
+
+void vmm_destroy_page_directory(page_directory_t* pd) {
+    if (pd == 0) {
+        return;
+    }
+
+    if (pd == kernel_directory) {
+        return;
+    }
+
+    /* Free user-space mappings (PDE 0-767). Kernel space is shared. */
+    for (uint32_t i = 0; i < 768U; i++) {
+        uint32_t pde = pd->entries[i];
+        if ((pde & PAGE_PRESENT) == 0U) {
+            continue;
+        }
+
+        page_table_t* pt =
+            (page_table_t*)((pde & 0xFFFFF000U) + KERNEL_VIRT_START);
+
+        for (uint32_t j = 0; j < 1024U; j++) {
+            uint32_t pte = pt->entries[j];
+            if ((pte & PAGE_PRESENT) == 0U) {
+                continue;
+            }
+
+            pmm_free_frame(pte & 0xFFFFF000U);
+            pt->entries[j] = 0;
+        }
+
+        pmm_free_frame(pde & 0xFFFFF000U);
+        pd->entries[i] = 0;
+    }
+
+    pmm_free_frame((uint32_t)pd - KERNEL_VIRT_START);
 }
 
 /* Switch to a new page directory */

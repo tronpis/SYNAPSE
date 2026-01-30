@@ -61,33 +61,36 @@ BOOT_ASM = $(BOOT_DIR)/boot.asm
 
 # Kernel assembly files
 KERNEL_ASM = $(KERNEL_DIR)/isr.asm \
-    $(KERNEL_DIR)/switch.asm
+	$(KERNEL_DIR)/switch.asm
 
 # Kernel C source files (explicit list to avoid pattern conflicts)
 KERNEL_C_FILES = $(KERNEL_DIR)/kernel.c \
-    $(KERNEL_DIR)/vga.c \
-    $(KERNEL_DIR)/gdt.c \
-    $(KERNEL_DIR)/idt.c \
-    $(KERNEL_DIR)/cpu.c \
-    $(KERNEL_DIR)/early.c \
-    $(KERNEL_DIR)/pmm.c \
-    $(KERNEL_DIR)/pmm_refcount.c \
-    $(KERNEL_DIR)/vmm.c \
-    $(KERNEL_DIR)/vmm_cow.c \
-    $(KERNEL_DIR)/heap.c \
-    $(KERNEL_DIR)/process.c \
-    $(KERNEL_DIR)/scheduler.c \
-    $(KERNEL_DIR)/scheduler_priority.c \
-    $(KERNEL_DIR)/timer.c \
-    $(KERNEL_DIR)/elf.c \
-    $(KERNEL_DIR)/syscall.c \
-    $(KERNEL_DIR)/usermode.c \
-    $(KERNEL_DIR)/sysinfo.c \
-    $(KERNEL_DIR)/fork.c \
-    $(KERNEL_DIR)/exec.c \
-    $(KERNEL_DIR)/wait.c \
-    $(KERNEL_DIR)/vfs.c \
-    $(KERNEL_DIR)/ramfs.c
+	$(KERNEL_DIR)/vga.c \
+	$(KERNEL_DIR)/gdt.c \
+	$(KERNEL_DIR)/idt.c \
+	$(KERNEL_DIR)/cpu.c \
+	$(KERNEL_DIR)/early.c \
+	$(KERNEL_DIR)/pmm.c \
+	$(KERNEL_DIR)/pmm_refcount.c \
+	$(KERNEL_DIR)/vmm.c \
+	$(KERNEL_DIR)/vmm_cow.c \
+	$(KERNEL_DIR)/heap.c \
+	$(KERNEL_DIR)/process.c \
+	$(KERNEL_DIR)/scheduler.c \
+	$(KERNEL_DIR)/scheduler_priority.c \
+	$(KERNEL_DIR)/timer.c \
+	$(KERNEL_DIR)/elf.c \
+	$(KERNEL_DIR)/syscall.c \
+	$(KERNEL_DIR)/usermode.c \
+	$(KERNEL_DIR)/sysinfo.c \
+	$(KERNEL_DIR)/serial.c \
+	$(KERNEL_DIR)/keyboard.c \
+	$(KERNEL_DIR)/console.c \
+	$(KERNEL_DIR)/fork.c \
+	$(KERNEL_DIR)/exec.c \
+	$(KERNEL_DIR)/wait.c \
+	$(KERNEL_DIR)/vfs.c \
+	$(KERNEL_DIR)/ramfs.c
 
 # Library C source files
 KERNEL_LIB_FILES = $(KERNEL_DIR)/lib/string.c
@@ -105,18 +108,28 @@ ISO_IMAGE = synapse.iso
 # ============================================================================
 
 # Default target
+kernel: $(KERNEL_BIN)
+
 all: $(ISO_IMAGE)
+
+iso: $(ISO_IMAGE)
 
 # Create build directory
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)
+
+DEPS_STAMP = $(BUILD_DIR)/deps.stamp
+
+$(DEPS_STAMP): configure | $(BUILD_DIR)
+	@./configure
+	@touch $@
 
 # ============================================================================
 # BOOT CODE
 # ============================================================================
 
 # Compile boot assembly
-$(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR)
+$(BUILD_DIR)/boot.o: $(BOOT_ASM) $(DEPS_STAMP) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================================
@@ -124,24 +137,24 @@ $(BUILD_DIR)/boot.o: $(BOOT_ASM) | $(BUILD_DIR)
 # ============================================================================
 
 # Compile kernel assembly files
-$(BUILD_DIR)/isr.o: $(KERNEL_DIR)/isr.asm | $(BUILD_DIR)
+$(BUILD_DIR)/isr.o: $(KERNEL_DIR)/isr.asm $(DEPS_STAMP) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(BUILD_DIR)/switch.o: $(KERNEL_DIR)/switch.asm | $(BUILD_DIR)
+$(BUILD_DIR)/switch.o: $(KERNEL_DIR)/switch.asm $(DEPS_STAMP) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) $< -o $@
 
 # ============================================================================
 # KERNEL C FILES (explicit rules to avoid ambiguity)
 # ============================================================================
 
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c $(DEPS_STAMP) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # ============================================================================
 # LIBRARY FILES
 # ============================================================================
 
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: $(KERNEL_DIR)/lib/%.c $(DEPS_STAMP) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -I$(KERNEL_DIR)/include -c $< -o $@
 
 # ============================================================================
@@ -206,6 +219,10 @@ clean:
 # Clean and rebuild
 rebuild: clean all
 
+check: kernel
+
+distcheck: clean kernel
+
 # Show kernel size information
 size: $(KERNEL_BIN)
 	@echo "Kernel size information:"
@@ -231,12 +248,16 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Targets:"
-	@echo "  all          - Build kernel and ISO (default)"
+	@echo "  kernel       - Build kernel ELF (default)"
+	@echo "  all          - Build bootable ISO image"
+	@echo "  iso          - Build bootable ISO image"
 	@echo "  run          - Run kernel in QEMU"
 	@echo "  debug        - Run kernel in QEMU with debug output"
 	@echo "  gdb          - Run kernel in QEMU with GDB server"
 	@echo "  clean        - Remove build files"
 	@echo "  rebuild      - Clean and rebuild"
+	@echo "  check        - Build kernel (CI helper)"
+	@echo "  distcheck    - Clean and build kernel (CI helper)"
 	@echo "  size         - Show kernel size information"
 	@echo "  check-tools  - Check if required tools are installed"
 	@echo "  help         - Show this help message"
@@ -248,4 +269,4 @@ help:
 # ============================================================================
 # PHONY TARGETS
 # ============================================================================
-.PHONY: all run debug gdb clean rebuild size check-tools help
+.PHONY: kernel all iso run debug gdb clean rebuild check distcheck size check-tools help

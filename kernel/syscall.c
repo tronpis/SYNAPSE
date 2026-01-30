@@ -11,9 +11,92 @@
 #include <kernel/exec.h>
 #include <kernel/wait.h>
 #include <kernel/vfs.h>
+#include <kernel/keyboard.h>
 
 /* System call table */
 static syscall_func_t syscall_table[NUM_SYSCALLS];
+
+static int sys_exit_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_exit(arg1);
+}
+
+static int sys_write_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                             uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_write(arg1, arg2, arg3);
+}
+
+static int sys_read_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_read(arg1, arg2, arg3);
+}
+
+static int sys_open_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_open(arg1, arg2, arg3);
+}
+
+static int sys_close_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                             uint32_t arg4, uint32_t arg5) {
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_close(arg1);
+}
+
+static int sys_fork_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_fork();
+}
+
+static int sys_exec_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_exec(arg1, arg2);
+}
+
+static int sys_wait_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                            uint32_t arg4, uint32_t arg5) {
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_wait(arg1, arg2);
+}
+
+static int sys_getpid_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                              uint32_t arg4, uint32_t arg5) {
+    (void)arg1;
+    (void)arg2;
+    (void)arg3;
+    (void)arg4;
+    (void)arg5;
+    return sys_getpid();
+}
+
+static int sys_lseek_wrapper(uint32_t arg1, uint32_t arg2, uint32_t arg3,
+                             uint32_t arg4, uint32_t arg5) {
+    (void)arg4;
+    (void)arg5;
+    return sys_lseek((int)arg1, (int)arg2, (int)arg3);
+}
 
 /* Initialize system call interface */
 void syscall_init(void) {
@@ -25,16 +108,16 @@ void syscall_init(void) {
     }
 
     /* Register system calls */
-    syscall_register(SYS_EXIT, (syscall_func_t)sys_exit);
-    syscall_register(SYS_WRITE, (syscall_func_t)sys_write);
-    syscall_register(SYS_READ, (syscall_func_t)sys_read);
-    syscall_register(SYS_OPEN, (syscall_func_t)sys_open);
-    syscall_register(SYS_CLOSE, (syscall_func_t)sys_close);
-    syscall_register(SYS_FORK, (syscall_func_t)sys_fork);
-    syscall_register(SYS_EXEC, (syscall_func_t)sys_exec);
-    syscall_register(SYS_WAIT, (syscall_func_t)sys_wait);
-    syscall_register(SYS_GETPID, (syscall_func_t)sys_getpid);
-    syscall_register(SYS_LSEEK, (syscall_func_t)sys_lseek);
+    syscall_register(SYS_EXIT, sys_exit_wrapper);
+    syscall_register(SYS_WRITE, sys_write_wrapper);
+    syscall_register(SYS_READ, sys_read_wrapper);
+    syscall_register(SYS_OPEN, sys_open_wrapper);
+    syscall_register(SYS_CLOSE, sys_close_wrapper);
+    syscall_register(SYS_FORK, sys_fork_wrapper);
+    syscall_register(SYS_EXEC, sys_exec_wrapper);
+    syscall_register(SYS_WAIT, sys_wait_wrapper);
+    syscall_register(SYS_GETPID, sys_getpid_wrapper);
+    syscall_register(SYS_LSEEK, sys_lseek_wrapper);
 
     vga_print("    System calls registered\n");
 }
@@ -51,8 +134,28 @@ void syscall_register(uint32_t num, syscall_func_t handler) {
     syscall_table[num] = handler;
 }
 
+uint32_t syscall_get_num(registers_t* regs) {
+    if (regs == 0) {
+        return 0;
+    }
+
+    return regs->eax;
+}
+
+void syscall_set_return(registers_t* regs, uint32_t value) {
+    if (regs == 0) {
+        return;
+    }
+
+    regs->eax = value;
+}
+
 /* System call handler (called from assembly) */
-void syscall_handler(registers_t* regs) {
+registers_t* syscall_handler(registers_t* regs) {
+    if (regs == 0) {
+        return 0;
+    }
+
     /* Get syscall number */
     uint32_t num = syscall_get_num(regs);
 
@@ -61,24 +164,24 @@ void syscall_handler(registers_t* regs) {
         vga_print("[-] Invalid syscall: ");
         vga_print_dec(num);
         vga_print("\n");
-        syscall_set_return(regs, -1);
-        return;
+        syscall_set_return(regs, (uint32_t)-1);
+        return regs;
     }
 
     /* Call syscall handler */
     syscall_func_t handler = syscall_table[num];
-    uint32_t ret = handler(regs->ebx, regs->ecx, regs->edx, regs->esi, regs->edi);
+    uint32_t ret = handler(regs->ebx, regs->ecx, regs->edx, regs->esi,
+                           regs->edi);
 
     /* Set return value */
     syscall_set_return(regs, ret);
+    return regs;
 }
 
 /* System call implementations */
 
 /* Exit the current process */
 int sys_exit(uint32_t exit_code) {
-    (void)exit_code; /* Parameter not used yet */
-
     process_t* current = process_get_current();
     if (current == 0) {
         return -1;
@@ -88,7 +191,7 @@ int sys_exit(uint32_t exit_code) {
     vga_print(current->name);
     vga_print(" exited]\n");
 
-    process_exit(current);
+    process_exit((int)exit_code);
     return 0;
 }
 
@@ -97,17 +200,17 @@ int sys_write(uint32_t fd, uint32_t buffer, uint32_t count) {
     (void)fd; /* File descriptor not used yet */
 
     /* Validate count */
-    if (count == 0) {
+    if (count == 0U) {
         return 0;
     }
-    
+
     /* Reject kernel-space pointers to avoid leaking kernel memory */
-    if (buffer >= 0xC0000000) {
+    if (buffer >= 0xC0000000U) {
         return -1;
     }
 
-    if (count > 4096) {
-        count = 4096;
+    if (count > 4096U) {
+        count = 4096U;
     }
 
     /* Access user buffer safely using temporary mappings */
@@ -167,18 +270,85 @@ int sys_write(uint32_t fd, uint32_t buffer, uint32_t count) {
 
 /* Read from a file descriptor */
 int sys_read(uint32_t fd, uint32_t buffer, uint32_t count) {
-    (void)fd; /* File descriptor not used yet */
-    (void)buffer;
-    (void)count;
+    /* Only basic stdin (fd=0) is supported for now. */
+    if (fd != 0U) {
+        return -1;
+    }
 
-    /* Not implemented yet */
-    return -1;
+    if (count == 0U) {
+        return 0;
+    }
+
+    if (count > 4096U) {
+        count = 4096U;
+    }
+
+    /* Reject kernel-space pointers to avoid corrupting kernel memory */
+    if (buffer >= 0xC0000000U) {
+        return -1;
+    }
+
+    uint32_t bytes_read = 0U;
+    uint32_t user_addr = buffer;
+
+    while (bytes_read < count) {
+        if (keyboard_has_char() == 0) {
+            break;
+        }
+
+        uint32_t user_page = user_addr & 0xFFFFF000U;
+        uint32_t page_offset = user_addr & 0xFFFU;
+
+        uint32_t phys_addr = vmm_get_phys_addr(user_page);
+        if (phys_addr == 0U) {
+            return (bytes_read > 0U) ? (int)bytes_read : -1;
+        }
+
+        int slot = vmm_alloc_temp_slot();
+        if (slot < 0) {
+            return (bytes_read > 0U) ? (int)bytes_read : -1;
+        }
+
+        uint32_t temp_virt = vmm_map_temp_page(phys_addr, slot);
+        if (temp_virt == 0U) {
+            vmm_free_temp_slot(slot);
+            return (bytes_read > 0U) ? (int)bytes_read : -1;
+        }
+
+        uint32_t bytes_in_page = PAGE_SIZE - page_offset;
+        uint32_t bytes_to_copy = count - bytes_read;
+        if (bytes_to_copy > bytes_in_page) {
+            bytes_to_copy = bytes_in_page;
+        }
+
+        char* mapped_buf = (char*)(temp_virt + page_offset);
+        for (uint32_t i = 0U; (i < bytes_to_copy) && (bytes_read < count);
+             i++) {
+            if (keyboard_has_char() == 0) {
+                break;
+            }
+
+            char c = keyboard_get_char();
+            if (c == 0) {
+                break;
+            }
+
+            mapped_buf[i] = c;
+            bytes_read++;
+            user_addr++;
+        }
+
+        vmm_unmap_temp_page(slot);
+        vmm_free_temp_slot(slot);
+    }
+
+    return (int)bytes_read;
 }
 
 /* Open a file */
 int sys_open(uint32_t filename, uint32_t flags, uint32_t mode) {
     /* Validate pointer is in user space */
-    if (filename >= 0xC0000000) {
+    if (filename >= 0xC0000000U) {
         return -1;
     }
 
@@ -203,7 +373,7 @@ int sys_fork(void) {
 /* Execute a new program */
 int sys_exec(uint32_t path, uint32_t argv) {
     /* Validate pointer is in user space */
-    if (path >= 0xC0000000) {
+    if (path >= 0xC0000000U) {
         return -1;
     }
 
@@ -216,7 +386,7 @@ int sys_exec(uint32_t path, uint32_t argv) {
 /* Wait for a process to exit */
 int sys_wait(uint32_t pid, uint32_t status) {
     /* Validate status pointer is in user space */
-    if (status >= 0xC0000000) {
+    if (status >= 0xC0000000U) {
         return -1;
     }
 

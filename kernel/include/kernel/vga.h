@@ -30,6 +30,8 @@ extern "C" {
 #define VGA_COLOR_LIGHT_BROWN 14
 #define VGA_COLOR_WHITE 15
 
+#define VGA_COLOR_LIGHT_YELLOW VGA_COLOR_LIGHT_BROWN
+
 /* VGA functions */
 void vga_clear_screen(void);
 void vga_set_color(unsigned char fg, unsigned char bg);

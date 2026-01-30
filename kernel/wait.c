@@ -6,8 +6,7 @@
 #include <kernel/vga.h>
 #include <kernel/scheduler.h>
 
-/* Simple waiting list for processes waiting for children */
-static process_t* wait_list = 0;
+#define WAIT_ANY ((pid_t)0xFFFFFFFFU)
 
 /* Wait system call implementation */
 pid_t do_wait(pid_t pid, int* status) {
@@ -34,7 +33,7 @@ pid_t do_wait(pid_t pid, int* status) {
     /* Find zombie child */
     do {
         if (proc->ppid == current->pid && proc->state == PROC_STATE_ZOMBIE) {
-            if (pid == -1 || proc->pid == pid) {
+            if ((pid == WAIT_ANY) || (proc->pid == pid)) {
                 child = proc;
                 break;
             }
@@ -54,7 +53,7 @@ pid_t do_wait(pid_t pid, int* status) {
 
         if (status != 0) {
             /* Validate status pointer is in user space */
-            if ((uint32_t)status < 0xC0000000) {
+            if ((uint32_t)status < 0xC0000000U) {
                 /* For now, we can't write to user space without temp mappings */
                 /* In a real system, we'd use temporary mappings here */
             }

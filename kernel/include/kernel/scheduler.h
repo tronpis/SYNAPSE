@@ -77,4 +77,8 @@ void scheduler_get_stats(scheduler_stats_t* stats);
 /* Reset scheduler statistics */
 void scheduler_reset_stats(void);
 
+/* Internal helpers implemented in scheduler_priority.c (used by scheduler.c) */
+void scheduler_update_stats(int was_idle);
+void scheduler_count_switch(void);
+
 #endif /* KERNEL_SCHEDULER_H */

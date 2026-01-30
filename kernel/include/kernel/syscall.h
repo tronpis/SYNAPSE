@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#include <kernel/idt.h>
+
 /* System call numbers */
 #define SYS_EXIT     1
 #define SYS_WRITE    2
@@ -32,11 +34,8 @@ void syscall_init(void);
 /* Register a system call handler */
 void syscall_register(uint32_t num, syscall_func_t handler);
 
-/* Forward declaration for CPU register state (defined elsewhere) */
-struct registers;
-
 /* System call handler (called from assembly) */
-void syscall_handler(struct registers* regs);
+registers_t* syscall_handler(registers_t* regs);
 
 /* Individual system call implementations */
 int sys_exit(uint32_t exit_code);
@@ -50,8 +49,7 @@ int sys_wait(uint32_t pid, uint32_t status);
 int sys_getpid(void);
 int sys_lseek(int fd, int offset, int whence);
 
-/* Helper prototypes (definitions must be in a C file where `struct registers` is defined) */
-uint32_t syscall_get_num(struct registers* regs);
-void syscall_set_return(struct registers* regs, uint32_t value);
+uint32_t syscall_get_num(registers_t* regs);
+void syscall_set_return(registers_t* regs, uint32_t value);
 
 #endif /* KERNEL_SYSCALL_H */

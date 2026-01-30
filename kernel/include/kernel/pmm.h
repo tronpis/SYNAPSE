@@ -57,6 +57,8 @@ void* pmm_kmalloc(uint32_t size);
 void pmm_kfree(void* ptr, uint32_t size);
 
 /* Reference counting for COW support */
+void pmm_refcount_init(uint32_t total_frames);
+
 /* Increment reference count for a frame */
 void pmm_ref_frame(uint32_t frame_addr);
 

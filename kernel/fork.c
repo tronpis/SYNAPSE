@@ -91,7 +91,7 @@ pid_t do_fork(void) {
     child->heap_end = current->heap_end;
 
     /* Add to process list */
-    process_list_insert(child);
+    process_add_to_list(child);
     scheduler_add_process(child);
 
     vga_print("[+] fork: Created child process PID: ");

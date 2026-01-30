@@ -9,6 +9,7 @@
 #include <kernel/scheduler.h>
 #include <kernel/timer.h>
 #include <kernel/syscall.h>
+#include <kernel/keyboard.h>
 
 /* IDT entry structure (for 32-bit) */
 typedef struct {
@@ -85,6 +86,9 @@ extern void irq15(void);
 extern void isr_default(void);
 extern void isr_common_stub(void);
 
+/* System call interrupt stub (int 0x80) */
+extern void isr_syscall(void);
+
 /* Set an IDT gate */
 static void idt_set_gate(unsigned char num, unsigned int base,
                          unsigned short sel, unsigned char flags) {
@@ -150,6 +154,11 @@ registers_t* isr_handler(registers_t *regs) {
             if (new_regs == 0) {
                 new_regs = regs;
             }
+        }
+
+        /* IRQ1: Keyboard */
+        if (regs->int_no == 33) {
+            keyboard_irq_handler();
         }
 
         return new_regs;

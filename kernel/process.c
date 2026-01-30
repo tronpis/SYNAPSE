@@ -9,6 +9,7 @@
 #include <kernel/vga.h>
 #include <kernel/vmm.h>
 #include <kernel/const.h>
+#include <kernel/scheduler.h>
 
 #define IRQ0_VECTOR       32
 
@@ -41,6 +42,16 @@ static void process_list_insert(process_t* proc) {
     if (flags & (1 << 9)) {
         asm volatile("sti");
     }
+}
+
+void process_add_to_list(process_t* proc) {
+    if (proc == 0) {
+        return;
+    }
+
+    proc->next = 0;
+    proc->prev = 0;
+    process_list_insert(proc);
 }
 
 static uint32_t* stack_push(uint32_t* sp, uint32_t value) {

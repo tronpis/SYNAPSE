@@ -21,20 +21,24 @@ static inline void cpuid(uint32_t code, uint32_t* eax, uint32_t* ebx,
 /* Check if CPUID is supported */
 int cpu_has_cpuid(void) {
     uint32_t eflags_before, eflags_after;
-    
+
     /* Try to flip ID bit (bit 21) in EFLAGS */
     __asm__ volatile(
-        "pushfd\n"
-        "pop %0\n"
-        "mov %0, %1\n"
-        "xor $0x200000, %0\n"
-        "push %0\n"
-        "popfd\n"
-        "pushfd\n"
-        "pop %0\n"
+        "pushfl\n\t"
+        "popl %0\n\t"
+        "movl %0, %1\n\t"
+        "xorl $0x200000, %0\n\t"
+        "pushl %0\n\t"
+        "popfl\n\t"
+        "pushfl\n\t"
+        "popl %0\n\t"
+        "pushl %1\n\t"
+        "popfl\n\t"
         : "=&r"(eflags_after), "=&r"(eflags_before)
+        :
+        : "cc"
     );
-    
+
     /* If bit changed, CPUID is supported */
     return ((eflags_before ^ eflags_after) & 0x200000) != 0;
 }
